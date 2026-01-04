@@ -229,7 +229,7 @@ const App: React.FC = () => {
                   <div className="absolute inset-0 z-20 p-5 md:p-16 flex flex-col justify-between pointer-events-none">
                     <div className="space-y-4 md:space-y-6">
                       <h3 className="text-4xl md:text-7xl font-oswald font-black text-white uppercase italic tracking-tighter leading-none">Respeito <span className="text-yellow-500">& Liberdade.</span></h3>
-                      <p className="text-zinc-400 max-w-2xl text-sm md:text-xl leading-relaxed font-light">Unindo a irmandade sob os values da maior associação de Moto Turismo do Mundo.</p>
+                      <p className="text-zinc-400 max-w-2xl text-sm md:text-xl leading-relaxed font-light">Unindo a irmandade sob os valores da maior associação de Moto Turismo do Mundo.</p>
                     </div>
                     
                     <div className="flex flex-row gap-2 md:gap-4 pointer-events-auto items-center mt-auto">

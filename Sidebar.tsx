@@ -9,7 +9,7 @@ interface SidebarProps {
   onLogout: () => void;
 }
 
-const LAMA_LOGO_URL = 'https://raw.githubusercontent.com/lamaaparecidabr-lab/LAMA-APARECIDA/refs/heads/main/components/logo.jpg';
+const LAMA_LOGO_URL = 'https://github.com/lamaaparecidabr-lab/LAMA-APARECIDA/blob/main/components/logo.jpg?raw=true';
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, onLogout }) => {
   const menuItems = [
