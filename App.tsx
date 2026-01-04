@@ -111,7 +111,7 @@ const App: React.FC = () => {
         .from('profiles')
         .select('role, name, bike_model, avatar_url, birth_date')
         .eq('id', supabaseUser.id)
-        .single();
+        .maybeSingle();
 
       if (error && retryCount < 3) {
         setTimeout(() => syncUserData(supabaseUser, retryCount + 1), 500);
@@ -172,7 +172,7 @@ const App: React.FC = () => {
   };
 
   const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     setIsLoading(true);
     const { error } = await supabase.auth.signInWithPassword({
       email: loginForm.email.trim(),
@@ -229,7 +229,7 @@ const App: React.FC = () => {
   };
 
   const resizeImage = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onload = (e) => {
         const img = new Image();
@@ -237,7 +237,7 @@ const App: React.FC = () => {
           const canvas = document.createElement('canvas');
           let width = img.width;
           let height = img.height;
-          const maxDim = 320; // Redução estratégica para manter o payload pequeno
+          const maxDim = 320; 
           if (width > height) {
             if (width > maxDim) {
               height *= maxDim / width;
@@ -253,12 +253,10 @@ const App: React.FC = () => {
           canvas.height = height;
           const ctx = canvas.getContext('2d');
           ctx?.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL('image/jpeg', 0.6)); // Qualidade de compressão equilibrada
+          resolve(canvas.toDataURL('image/jpeg', 0.6));
         };
-        img.onerror = () => reject("Erro ao processar imagem");
         img.src = e.target?.result as string;
       };
-      reader.onerror = () => reject("Erro ao ler arquivo");
       reader.readAsDataURL(file);
     });
   };
@@ -266,12 +264,8 @@ const App: React.FC = () => {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      try {
-        const resizedBase64 = await resizeImage(file);
-        setEditForm(prev => ({ ...prev, avatar: resizedBase64 }));
-      } catch (err) {
-        alert("Falha ao processar imagem. Tente outra foto.");
-      }
+      const resizedBase64 = await resizeImage(file);
+      setEditForm(prev => ({ ...prev, avatar: resizedBase64 }));
     }
   };
 
@@ -281,39 +275,32 @@ const App: React.FC = () => {
     setIsUpdating(true);
 
     try {
-      // 1. Atualizar tabela de perfis (Fonte da verdade para dados pesados como Base64)
       const { error: dbError } = await supabase
         .from('profiles')
-        .update({
+        .upsert({
+          id: user.id,
           name: editForm.name,
           bike_model: editForm.bikeModel,
           avatar_url: editForm.avatar,
-          birth_date: editForm.birthDate
-        })
-        .eq('id', user.id);
+          birth_date: editForm.birthDate,
+          updated_at: new Date()
+        });
 
       if (dbError) throw dbError;
 
-      // 2. Atualizar Auth Metadata apenas com textos curtos. 
-      // NUNCA enviar o avatar (base64) aqui para evitar erro "Failed to fetch" (payload limit) no Vercel.
       const { error: authError } = await supabase.auth.updateUser({
         data: {
           name: editForm.name,
           bikeModel: editForm.bikeModel
-          // avatar OMITIDO propositalmente
         }
       });
 
-      if (authError) {
-        console.warn("Auth Meta não atualizado, mas o perfil no banco está OK.", authError);
-      }
-
       setIsEditingProfile(false);
       setUser({ ...user, ...editForm });
-      alert("Perfil atualizado com sucesso!");
+      alert("Perfil salvo com sucesso!");
     } catch (error: any) {
       console.error("Erro ao salvar perfil:", error);
-      alert("Falha ao salvar perfil. Verifique sua conexão ou tente uma imagem menor.");
+      alert("Erro ao salvar perfil. Tente uma imagem de perfil menor ou outra foto.");
     } finally {
       setIsUpdating(false);
     }
@@ -392,11 +379,11 @@ const App: React.FC = () => {
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
-      case 'Fácil': return 'bg-green-500/10 text-green-500 border-green-500/20';
-      case 'Moderada': return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
-      case 'Difícil': return 'bg-orange-600/10 text-orange-600 border-orange-600/20';
-      case 'Lendária': return 'bg-red-600/10 text-red-600 border-red-600/20';
-      default: return 'bg-zinc-500/10 text-zinc-500 border-zinc-500/20';
+      case 'Fácil': return 'bg-green-600 text-white border-green-700 shadow-[0_0_10px_rgba(22,163,74,0.3)]';
+      case 'Moderada': return 'bg-yellow-500 text-black border-yellow-600 shadow-[0_0_10px_rgba(234,179,8,0.3)]';
+      case 'Difícil': return 'bg-orange-700 text-white border-orange-800 shadow-[0_0_10px_rgba(194,65,12,0.3)]';
+      case 'Lendária': return 'bg-red-600 text-white border-red-700 shadow-[0_0_10px_rgba(220,38,38,0.3)]';
+      default: return 'bg-zinc-600 text-white border-zinc-700';
     }
   };
 
@@ -407,7 +394,7 @@ const App: React.FC = () => {
     <div className="min-h-[70vh] flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-zinc-900/95 border border-zinc-800 p-8 md:p-12 rounded-[2.5rem] shadow-2xl backdrop-blur-xl">
         <div className="text-center mb-10">
-          <img src={LAMA_LOGO_URL} alt="Logo" className="w-24 h-24 mx-auto mb-6 object-contain" onError={(e) => { (e.target as HTMLImageElement).src = 'https://raw.githubusercontent.com/lamaaparecidabr-lab/LAMA-APARECIDA/main/components/logo.jpg'; }} />
+          <img src={LAMA_LOGO_URL} alt="Logo" className="w-24 h-24 mx-auto mb-6 object-contain" />
           <h2 className="text-3xl font-oswald text-white font-black uppercase italic tracking-tighter">Sede Virtual</h2>
           <p className="text-zinc-500 text-[10px] mt-2 uppercase tracking-widest font-black">Acesso Exclusivo para Membros</p>
         </div>
@@ -457,7 +444,7 @@ const App: React.FC = () => {
               <div className="space-y-6 md:space-y-8">
                 <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-zinc-900 pb-12">
                   <div className="flex items-center gap-6 md:gap-10">
-                    <img src={LAMA_LOGO_URL} alt="Logo" className="w-20 h-20 md:w-28 md:h-28 object-contain" onError={(e) => { (e.target as HTMLImageElement).src = 'https://raw.githubusercontent.com/lamaaparecidabr-lab/LAMA-APARECIDA/main/components/logo.jpg'; }} />
+                    <img src={LAMA_LOGO_URL} alt="Logo" className="w-20 h-20 md:w-28 md:h-28 object-contain" />
                     <div>
                       <span className="text-yellow-500 font-black uppercase tracking-widest text-xs md:text-lg">LATIN AMERICAN MOTORCYCLE ASSOCIATION</span>
                       <h1 className="text-3xl md:text-5xl font-oswald font-black text-white uppercase italic mt-1 md:mt-2">Capítulo <span className="text-yellow-500">Aparecida</span></h1>
@@ -519,22 +506,33 @@ const App: React.FC = () => {
               <div className="space-y-12">
                 <header className="flex items-center gap-4">
                   <div className="w-2 h-10 bg-yellow-500 rounded-full"></div>
-                  <h2 className="text-4xl font-oswald font-black text-white italic uppercase tracking-tighter">Rotas <span className="text-yellow-500">Icônicas</span></h2>
+                  <h2 className="text-5xl font-oswald font-black text-white italic uppercase tracking-tighter">Rotas <span className="text-yellow-500">Icônicas</span></h2>
                 </header>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   {iconicRoutes.map(route => (
-                    <div key={route.id} className="bg-zinc-950 rounded-[2.5rem] border border-zinc-900 overflow-hidden shadow-2xl group flex flex-col hover:border-yellow-500/30 transition-all">
-                      <div className="h-64 overflow-hidden">
-                        <img src={route.thumbnail} className="w-full h-full object-cover group-hover:scale-110 transition-all duration-700 opacity-80" alt={route.title} />
+                    <div key={route.id} className="bg-zinc-900/50 rounded-[3rem] overflow-hidden border border-zinc-800 hover:border-yellow-500/30 transition-all group shadow-2xl flex flex-col">
+                      <div className="h-64 relative overflow-hidden">
+                        <img src={route.thumbnail} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 opacity-80" alt={route.title} />
+                        {route.isOfficial && (
+                          <div className="absolute top-6 left-6 -rotate-12 bg-yellow-500 text-black px-4 py-2 border-2 border-black font-black text-[10px] uppercase tracking-widest shadow-2xl z-20 italic">
+                            OFICIAL L.A.M.A.
+                          </div>
+                        )}
                       </div>
-                      <div className="p-10 flex-1 flex flex-col">
-                        <h3 className="text-3xl font-oswald font-black text-white uppercase italic mb-4 tracking-tighter">{route.title}</h3>
-                        <p className="text-zinc-500 text-sm mb-8 flex-1 leading-relaxed">{route.description}</p>
-                        <div className="flex items-center justify-between mb-8">
-                          <span className="text-zinc-600 font-bold uppercase text-[10px] tracking-widest">{route.distance}</span>
-                          <span className={`px-2 py-1 rounded-md text-[9px] uppercase italic border ${getDifficultyColor(route.difficulty)}`}>{route.difficulty}</span>
+                      <div className="p-10 flex-1 flex flex-col space-y-6">
+                        <div className="flex flex-col gap-4">
+                          <div className={`w-fit px-4 py-1.5 rounded-lg border text-[10px] font-black uppercase tracking-widest italic ${getDifficultyColor(route.difficulty)}`}>
+                            {route.difficulty}
+                          </div>
+                          <div className="flex justify-between items-start">
+                            <h3 className="text-3xl font-oswald font-black text-white uppercase italic tracking-tighter">{route.title}</h3>
+                            <span className="text-zinc-500 font-mono text-sm">{route.distance}</span>
+                          </div>
                         </div>
-                        <button onClick={() => fetchInsights(route)} className="w-full bg-zinc-900 border border-zinc-800 text-yellow-500 py-4 rounded-2xl font-black uppercase hover:bg-yellow-500 hover:text-black transition-all">Briefing IA</button>
+                        <p className="text-zinc-500 text-sm leading-relaxed flex-1">{route.description}</p>
+                        <button onClick={() => fetchInsights(route)} className="w-full bg-zinc-800 hover:bg-yellow-500 hover:text-black text-white py-5 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] transition-all flex items-center justify-center gap-3">
+                          <Zap size={16} /> Briefing Inteligente
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -543,22 +541,25 @@ const App: React.FC = () => {
             )}
 
             {currentView === 'gallery' && (
-              <div className="space-y-8 h-full">
+              <div className="space-y-12">
                 <header className="flex items-center gap-4">
                   <div className="w-2 h-10 bg-yellow-500 rounded-full"></div>
-                  <h2 className="text-4xl font-oswald font-bold uppercase text-white italic">Nossa <span className="text-yellow-500">Galeria</span></h2>
+                  <h2 className="text-5xl font-oswald font-black text-white italic uppercase tracking-tighter">Nossa <span className="text-yellow-500">Galeria</span></h2>
                 </header>
-                <div className="relative bg-zinc-900 rounded-[3rem] border border-zinc-800 flex flex-col items-center justify-center p-12 text-center shadow-2xl min-h-[500px] overflow-hidden">
-                  <div className="absolute inset-0 opacity-10">
+                <div className="relative bg-zinc-900 rounded-[4rem] border border-zinc-800 flex flex-col items-center justify-center p-16 text-center shadow-3xl min-h-[600px] overflow-hidden group">
+                  <div className="absolute inset-0 opacity-20 transition-transform duration-[10s] group-hover:scale-110">
                     <img src="https://images.unsplash.com/photo-1558981403-c5f91cbba527?q=80&w=2070&auto=format&fit=crop" className="w-full h-full object-cover grayscale" />
                   </div>
-                  <div className="relative z-10 space-y-6">
-                    <div className="bg-yellow-500/10 p-6 rounded-full w-fit mx-auto border border-yellow-500/20 mb-4">
-                      <ImageIcon size={48} className="text-yellow-500" />
+                  <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/40 to-black"></div>
+                  <div className="relative z-10 space-y-8 max-w-2xl">
+                    <div className="bg-yellow-500/20 p-8 rounded-full w-fit mx-auto border border-yellow-500/30 mb-6 shadow-[0_0_50px_rgba(234,179,8,0.2)]">
+                      <ImageIcon size={64} className="text-yellow-500" />
                     </div>
-                    <h3 className="text-3xl font-oswald font-bold text-white uppercase italic">Explore no Facebook</h3>
-                    <p className="text-zinc-400 mb-10 max-w-xl text-lg leading-relaxed">Nossa história viva está documentada em fotos e vídeos em nossa página oficial. Clique abaixo para ver os registros dos nossos encontros.</p>
-                    <a href="https://www.facebook.com/lamaaparecidabr/photos" target="_blank" className="inline-flex items-center gap-3 bg-yellow-500 text-black px-12 py-5 rounded-2xl font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-yellow-500/20">ACESSAR GALERIA <ExternalLink size={20}/></a>
+                    <h3 className="text-4xl font-oswald font-black text-white uppercase italic tracking-tighter">História em Cada Clique</h3>
+                    <p className="text-zinc-400 text-lg leading-relaxed font-medium">Nossa jornada está documentada em fotos e vídeos em nossa página oficial. Explore os registros dos nossos encontros e viagens.</p>
+                    <a href="https://www.facebook.com/lamaaparecidabr/photos" target="_blank" className="inline-flex items-center gap-4 bg-yellow-500 text-black px-16 py-6 rounded-3xl font-black uppercase tracking-[0.2em] text-xs hover:bg-yellow-400 transition-all shadow-2xl shadow-yellow-500/20 active:scale-95">
+                      ACESSAR NO FACEBOOK <ExternalLink size={20}/>
+                    </a>
                   </div>
                 </div>
               </div>
@@ -594,10 +595,10 @@ const App: React.FC = () => {
                           <input type="date" className="w-full bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-2xl outline-none focus:border-yellow-500/50" value={editForm.birthDate} onChange={e => setEditForm({...editForm, birthDate: e.target.value})} />
                         </div>
                         <div className="space-y-2">
-                          <label className="text-[9px] font-black uppercase tracking-widest text-zinc-600 ml-4">Foto de Perfil</label>
+                          <label className="text-[9px] font-black uppercase tracking-widest text-zinc-600 ml-4">Foto (Redimensionada)</label>
                           <div className="flex items-center gap-4">
                              <label className="flex-1 cursor-pointer bg-zinc-900 border border-zinc-800 border-dashed text-zinc-500 px-6 py-4 rounded-2xl text-center hover:border-yellow-500/50 transition-all font-black text-[10px] uppercase tracking-widest">
-                               <Camera size={16} className="inline mr-2" /> Trocar Imagem <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+                               Trocar Imagem <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
                              </label>
                              {editForm.avatar && <img src={editForm.avatar} alt="Preview" className="w-14 h-14 rounded-xl object-cover border border-zinc-800 shadow-xl" />}
                           </div>
