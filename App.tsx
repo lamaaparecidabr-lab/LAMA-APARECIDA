@@ -228,18 +228,44 @@ const App: React.FC = () => {
     setIsUpdating(false);
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 800 * 1024) { 
-        alert("A imagem deve ser menor que 800KB.");
-        return;
-      }
+  const resizeImage = (file: File): Promise<string> => {
+    return new Promise((resolve) => {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setEditForm(prev => ({ ...prev, avatar: reader.result as string }));
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          const maxDim = 400; // Redimensionar para max 400px para garantir que caiba no payload do Vercel
+          if (width > height) {
+            if (width > maxDim) {
+              height *= maxDim / width;
+              width = maxDim;
+            }
+          } else {
+            if (height > maxDim) {
+              width *= maxDim / height;
+              height = maxDim;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.7)); // Compressão 70%
+        };
+        img.src = e.target?.result as string;
       };
       reader.readAsDataURL(file);
+    });
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const resizedBase64 = await resizeImage(file);
+      setEditForm(prev => ({ ...prev, avatar: resizedBase64 }));
     }
   };
 
@@ -249,7 +275,7 @@ const App: React.FC = () => {
     setIsUpdating(true);
 
     try {
-      // 1. Atualizar tabela de perfis (mais seguro para dados pesados como base64 no Vercel/Edge)
+      // 1. Atualizar tabela de perfis
       const { error: dbError } = await supabase
         .from('profiles')
         .update({
@@ -262,12 +288,11 @@ const App: React.FC = () => {
 
       if (dbError) throw dbError;
 
-      // 2. Atualizar Auth apenas com textos curtos (evita o erro "Failed to fetch" causado por cabeçalhos gigantes)
+      // 2. Atualizar metadados básicos (apenas textos curtos)
       const { error: authError } = await supabase.auth.updateUser({
         data: {
           name: editForm.name,
           bikeModel: editForm.bikeModel
-          // NÃO enviamos o avatar aqui para não estourar o limite de payload do Vercel no Auth
         }
       });
 
@@ -278,7 +303,7 @@ const App: React.FC = () => {
       setUser({ ...user, ...editForm });
     } catch (error: any) {
       console.error("Erro ao salvar perfil:", error);
-      alert("Erro: Não foi possível salvar. Tente uma imagem de perfil menor.");
+      alert("Erro ao salvar perfil. Tente novamente.");
     } finally {
       setIsUpdating(false);
     }
@@ -431,7 +456,10 @@ const App: React.FC = () => {
                 </header>
 
                 <div className="space-y-6">
-                  <h3 className="text-2xl md:text-3xl font-oswald font-black text-white uppercase italic tracking-widest">Respeito <span className="text-yellow-500">& Liberdade</span></h3>
+                  <div className="flex items-center gap-3">
+                    <div className="w-1.5 h-6 bg-yellow-500 rounded-full"></div>
+                    <h3 className="text-2xl md:text-3xl font-oswald font-black text-white uppercase italic tracking-widest leading-none">Respeito <span className="text-yellow-500">& Liberdade</span></h3>
+                  </div>
                   
                   <div ref={videoContainerRef} className="relative rounded-3xl md:rounded-[4rem] overflow-hidden bg-zinc-900 border border-zinc-800 aspect-[16/9] md:aspect-[21/9] shadow-3xl">
                     <iframe 
@@ -459,30 +487,43 @@ const App: React.FC = () => {
 
             {currentView === 'clubhouse' && (
               <div className="space-y-12">
-                <header><h2 className="text-5xl font-oswald font-black text-white italic uppercase">Sede</h2></header>
+                <header className="flex items-center gap-4">
+                  <div className="w-2 h-10 bg-yellow-500 rounded-full"></div>
+                  <h2 className="text-5xl font-oswald font-black text-white italic uppercase tracking-tighter">Casa <span className="text-yellow-500">Club</span></h2>
+                </header>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                  <div className="bg-zinc-950 p-8 rounded-[3rem] border border-zinc-900 shadow-3xl flex flex-col justify-center">
-                    <p className="text-zinc-400 text-lg mb-10">{CLUBHOUSE_ADDRESS}</p>
+                  <div className="bg-zinc-950 p-8 md:p-12 rounded-[3rem] border border-zinc-900 shadow-3xl flex flex-col justify-center">
+                    <h3 className="text-3xl font-oswald font-black text-white uppercase italic mb-8">Ponto de <span className="text-yellow-500">Encontro</span></h3>
+                    <p className="text-zinc-400 text-lg mb-10 leading-relaxed">{CLUBHOUSE_ADDRESS}</p>
                     <div className="flex flex-col sm:flex-row gap-4">
-                      <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(CLUBHOUSE_MARK_NAME)}`} target="_blank" className="flex-1 bg-white text-black py-4 rounded-2xl font-black uppercase text-center hover:bg-yellow-500 transition-all">Maps</a>
-                      <a href={`https://waze.com/ul?q=${encodeURIComponent(CLUBHOUSE_MARK_NAME)}&navigate=yes`} target="_blank" className="flex-1 bg-[#33ccff] text-black py-4 rounded-2xl font-black uppercase text-center hover:bg-yellow-400 transition-all">Waze</a>
+                      <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(CLUBHOUSE_MARK_NAME)}`} target="_blank" className="flex-1 bg-white text-black py-4 rounded-2xl font-black uppercase text-center hover:bg-yellow-500 transition-all flex items-center justify-center gap-3">Abrir no Maps <ExternalLink size={18}/></a>
+                      <a href={`https://waze.com/ul?q=${encodeURIComponent(CLUBHOUSE_MARK_NAME)}&navigate=yes`} target="_blank" className="flex-1 bg-[#33ccff] text-black py-4 rounded-2xl font-black uppercase text-center hover:bg-yellow-400 transition-all flex items-center justify-center gap-3">Abrir no Waze <Navigation size={18}/></a>
                     </div>
                   </div>
-                  <MapView points={[{...CLUBHOUSE_COORDS, timestamp: Date.now()}]} className="h-[400px]" isInteractive />
+                  <MapView points={[{...CLUBHOUSE_COORDS, timestamp: Date.now()}]} className="h-[400px] shadow-3xl" isInteractive />
                 </div>
               </div>
             )}
 
             {currentView === 'explorer' && (
               <div className="space-y-12">
-                <header><h2 className="text-4xl font-oswald font-black text-white italic uppercase">Icônicas</h2></header>
+                <header className="flex items-center gap-4">
+                  <div className="w-2 h-10 bg-yellow-500 rounded-full"></div>
+                  <h2 className="text-4xl font-oswald font-black text-white italic uppercase tracking-tighter">Rotas <span className="text-yellow-500">Icônicas</span></h2>
+                </header>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                   {iconicRoutes.map(route => (
-                    <div key={route.id} className="bg-zinc-950 rounded-[2.5rem] border border-zinc-900 overflow-hidden shadow-2xl group flex flex-col">
-                      <img src={route.thumbnail} className="h-64 w-full object-cover group-hover:scale-105 transition-all duration-700" alt={route.title} />
+                    <div key={route.id} className="bg-zinc-950 rounded-[2.5rem] border border-zinc-900 overflow-hidden shadow-2xl group flex flex-col hover:border-yellow-500/30 transition-all">
+                      <div className="h-64 overflow-hidden">
+                        <img src={route.thumbnail} className="w-full h-full object-cover group-hover:scale-110 transition-all duration-700 opacity-80" alt={route.title} />
+                      </div>
                       <div className="p-10 flex-1 flex flex-col">
-                        <h3 className="text-3xl font-oswald font-black text-white uppercase italic mb-4">{route.title}</h3>
-                        <p className="text-zinc-500 text-sm mb-8 flex-1">{route.description}</p>
+                        <h3 className="text-3xl font-oswald font-black text-white uppercase italic mb-4 tracking-tighter">{route.title}</h3>
+                        <p className="text-zinc-500 text-sm mb-8 flex-1 leading-relaxed">{route.description}</p>
+                        <div className="flex items-center justify-between mb-8">
+                          <span className="text-zinc-600 font-bold uppercase text-[10px] tracking-widest">{route.distance}</span>
+                          <span className={`px-2 py-1 rounded-md text-[9px] uppercase italic border ${getDifficultyColor(route.difficulty)}`}>{route.difficulty}</span>
+                        </div>
                         <button onClick={() => fetchInsights(route)} className="w-full bg-zinc-900 border border-zinc-800 text-yellow-500 py-4 rounded-2xl font-black uppercase hover:bg-yellow-500 hover:text-black transition-all">Briefing IA</button>
                       </div>
                     </div>
@@ -493,11 +534,22 @@ const App: React.FC = () => {
 
             {currentView === 'gallery' && (
               <div className="space-y-8 h-full">
-                <header><h2 className="text-4xl font-oswald font-bold uppercase text-white italic">Galeria</h2></header>
-                <div className="relative bg-zinc-900 rounded-[3rem] border border-zinc-800 flex flex-col items-center justify-center p-12 text-center shadow-2xl min-h-[500px]">
-                  <h3 className="text-3xl font-oswald font-bold text-white uppercase italic mb-8">Facebook Oficial</h3>
-                  <p className="text-zinc-400 mb-10 max-w-xl">Acompanhe todos os nossos registros e eventos em tempo real na nossa página.</p>
-                  <a href="https://www.facebook.com/lamaaparecidabr/photos" target="_blank" className="bg-yellow-500 text-black px-10 py-5 rounded-2xl font-bold uppercase tracking-widest hover:scale-105 transition-all shadow-xl">Acessar Galeria</a>
+                <header className="flex items-center gap-4">
+                  <div className="w-2 h-10 bg-yellow-500 rounded-full"></div>
+                  <h2 className="text-4xl font-oswald font-bold uppercase text-white italic">Nossa <span className="text-yellow-500">Galeria</span></h2>
+                </header>
+                <div className="relative bg-zinc-900 rounded-[3rem] border border-zinc-800 flex flex-col items-center justify-center p-12 text-center shadow-2xl min-h-[500px] overflow-hidden">
+                  <div className="absolute inset-0 opacity-10">
+                    <img src="https://images.unsplash.com/photo-1558981403-c5f91cbba527?q=80&w=2070&auto=format&fit=crop" className="w-full h-full object-cover grayscale" />
+                  </div>
+                  <div className="relative z-10 space-y-6">
+                    <div className="bg-yellow-500/10 p-6 rounded-full w-fit mx-auto border border-yellow-500/20 mb-4">
+                      <ImageIcon size={48} className="text-yellow-500" />
+                    </div>
+                    <h3 className="text-3xl font-oswald font-bold text-white uppercase italic">Explore no Facebook</h3>
+                    <p className="text-zinc-400 mb-10 max-w-xl text-lg leading-relaxed">Nossa história viva está documentada em fotos e vídeos em nossa página oficial. Clique abaixo para ver os registros dos nossos encontros.</p>
+                    <a href="https://www.facebook.com/lamaaparecidabr/photos" target="_blank" className="inline-flex items-center gap-3 bg-yellow-500 text-black px-12 py-5 rounded-2xl font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-yellow-500/20">ACESSAR GALERIA <ExternalLink size={20}/></a>
+                  </div>
                 </div>
               </div>
             )}
@@ -505,48 +557,86 @@ const App: React.FC = () => {
             {currentView === 'profile' && (
               <div className="max-w-5xl mx-auto space-y-10">
                 <header className="flex items-center justify-between">
-                  <h2 className="text-4xl font-oswald font-black text-white italic uppercase">Perfil</h2>
+                  <div className="flex items-center gap-4">
+                    <div className="w-2 h-10 bg-yellow-500 rounded-full"></div>
+                    <h2 className="text-4xl font-oswald font-black text-white italic uppercase tracking-tighter">Área do <span className="text-yellow-500">Membro</span></h2>
+                  </div>
                   <div className="flex gap-4">
-                    <button onClick={() => setIsChangingPassword(!isChangingPassword)} className="px-6 py-3 bg-zinc-900 border border-zinc-800 rounded-xl text-[10px] font-black uppercase tracking-widest">Senha</button>
-                    <button onClick={() => setIsEditingProfile(!isEditingProfile)} className="px-6 py-3 bg-zinc-900 border border-zinc-800 rounded-xl text-[10px] font-black uppercase tracking-widest">Editar</button>
+                    <button onClick={() => setIsChangingPassword(!isChangingPassword)} className="px-6 py-3 bg-zinc-900 border border-zinc-800 rounded-xl text-[10px] font-black uppercase tracking-widest hover:text-red-500 transition-all">Senha</button>
+                    <button onClick={() => setIsEditingProfile(!isEditingProfile)} className="px-6 py-3 bg-zinc-900 border border-zinc-800 rounded-xl text-[10px] font-black uppercase tracking-widest hover:text-yellow-500 transition-all">Editar</button>
                   </div>
                 </header>
 
-                <div className="relative bg-zinc-950 p-8 md:p-16 rounded-[3rem] border border-zinc-900 shadow-3xl">
+                <div className="relative bg-zinc-950 p-8 md:p-16 rounded-[3rem] border border-zinc-900 shadow-3xl overflow-hidden">
                   {isEditingProfile ? (
                     <form onSubmit={handleUpdateProfile} className="space-y-8">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <input type="text" required className="w-full bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-2xl" placeholder="Nome" value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} />
-                        <input type="text" className="w-full bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-2xl" placeholder="Motocicleta" value={editForm.bikeModel} onChange={e => setEditForm({...editForm, bikeModel: e.target.value})} />
-                        <input type="date" className="w-full bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-2xl" value={editForm.birthDate} onChange={e => setEditForm({...editForm, birthDate: e.target.value})} />
-                        <div className="flex items-center gap-4">
-                           <label className="flex-1 cursor-pointer bg-zinc-900 border border-zinc-800 border-dashed text-zinc-500 px-6 py-4 rounded-2xl text-center">
-                             Foto de Perfil <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
-                           </label>
-                           {editForm.avatar && <img src={editForm.avatar} alt="Preview" className="w-14 h-14 rounded-xl object-cover border border-zinc-800" />}
+                        <div className="space-y-2">
+                          <label className="text-[9px] font-black uppercase tracking-widest text-zinc-600 ml-4">Nome de Estrada</label>
+                          <input type="text" required className="w-full bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-2xl outline-none focus:border-yellow-500/50" value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[9px] font-black uppercase tracking-widest text-zinc-600 ml-4">Máquina Principal</label>
+                          <input type="text" className="w-full bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-2xl outline-none focus:border-yellow-500/50" value={editForm.bikeModel} onChange={e => setEditForm({...editForm, bikeModel: e.target.value})} />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[9px] font-black uppercase tracking-widest text-zinc-600 ml-4">Data de Nascimento</label>
+                          <input type="date" className="w-full bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-2xl outline-none focus:border-yellow-500/50" value={editForm.birthDate} onChange={e => setEditForm({...editForm, birthDate: e.target.value})} />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[9px] font-black uppercase tracking-widest text-zinc-600 ml-4">Foto (Redimensionada)</label>
+                          <div className="flex items-center gap-4">
+                             <label className="flex-1 cursor-pointer bg-zinc-900 border border-zinc-800 border-dashed text-zinc-500 px-6 py-4 rounded-2xl text-center hover:border-yellow-500/50 transition-all font-black text-[10px] uppercase tracking-widest">
+                               Trocar Imagem <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+                             </label>
+                             {editForm.avatar && <img src={editForm.avatar} alt="Preview" className="w-14 h-14 rounded-xl object-cover border border-zinc-800 shadow-xl" />}
+                          </div>
                         </div>
                       </div>
-                      <button type="submit" disabled={isUpdating} className="w-full bg-yellow-500 text-black py-4 rounded-2xl font-black uppercase flex items-center justify-center gap-2">
-                        {isUpdating ? <Loader2 className="animate-spin" size={16} /> : <><Save size={16} /> Salvar Perfil</>}
-                      </button>
+                      <div className="flex gap-4">
+                        <button type="button" onClick={() => setIsEditingProfile(false)} className="flex-1 bg-zinc-900 text-zinc-500 py-4 rounded-2xl font-black uppercase hover:text-white">Cancelar</button>
+                        <button type="submit" disabled={isUpdating} className="flex-[2] bg-yellow-500 text-black py-4 rounded-2xl font-black uppercase flex items-center justify-center gap-2 shadow-xl shadow-yellow-500/20">
+                          {isUpdating ? <Loader2 className="animate-spin" size={16} /> : <><Save size={16} /> Salvar Perfil</>}
+                        </button>
+                      </div>
                     </form>
                   ) : isChangingPassword ? (
                     <form onSubmit={handleChangePassword} className="space-y-8">
+                       <h3 className="text-2xl font-oswald font-black text-white uppercase italic">Mudar <span className="text-red-600">Senha</span></h3>
                        <input type="password" required className="w-full bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-2xl" placeholder="Nova Senha" value={passwordForm.newPassword} onChange={e => setPasswordForm({...passwordForm, newPassword: e.target.value})} />
                        <input type="password" required className="w-full bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-2xl" placeholder="Confirmar" value={passwordForm.confirmPassword} onChange={e => setPasswordForm({...passwordForm, confirmPassword: e.target.value})} />
-                       <button type="submit" disabled={isUpdating} className="w-full bg-red-600 text-white py-4 rounded-2xl font-black uppercase">Alterar Senha</button>
+                       <div className="flex gap-4">
+                         <button type="button" onClick={() => setIsChangingPassword(false)} className="flex-1 bg-zinc-900 text-zinc-500 py-4 rounded-2xl font-black uppercase">Voltar</button>
+                         <button type="submit" disabled={isUpdating} className="flex-[2] bg-red-600 text-white py-4 rounded-2xl font-black uppercase">Alterar Senha</button>
+                       </div>
                     </form>
                   ) : (
-                    <div className="flex flex-col md:flex-row items-center gap-10">
-                      <img src={user?.avatar} alt="Avatar" className="w-48 h-48 md:w-64 md:h-64 rounded-[2.5rem] object-cover border-4 border-zinc-950" />
-                      <div className="text-center md:text-left">
-                        <h2 className="text-4xl md:text-7xl font-oswald font-black text-white uppercase italic tracking-tighter mb-4">{user?.name}</h2>
-                        <p className="text-zinc-500 italic mb-6">{user?.email}</p>
-                        <div className="flex gap-4 justify-center md:justify-start">
-                          <div className="bg-zinc-900 p-4 rounded-2xl flex items-center gap-3">
-                            <Bike size={20} className="text-yellow-500" />
-                            <span className="font-bold text-white uppercase italic">{user?.bikeModel}</span>
+                    <div className="flex flex-col md:flex-row items-center gap-10 md:gap-16">
+                      <div className="relative">
+                        <div className="absolute inset-0 bg-yellow-500/20 blur-3xl rounded-full"></div>
+                        <img src={user?.avatar} alt="Avatar" className="relative w-48 h-48 md:w-64 md:h-64 rounded-[2.5rem] object-cover border-4 border-zinc-950 shadow-2xl" />
+                      </div>
+                      <div className="text-center md:text-left space-y-4">
+                        <span className="inline-block px-3 py-1 bg-yellow-500/10 text-yellow-500 text-[10px] font-black uppercase rounded-lg">Membro Capítulo Aparecida</span>
+                        <h2 className="text-4xl md:text-7xl font-oswald font-black text-white uppercase italic tracking-tighter leading-none">{user?.name}</h2>
+                        <p className="text-zinc-500 italic font-medium uppercase tracking-widest text-xs">{user?.email}</p>
+                        <div className="flex flex-wrap gap-4 justify-center md:justify-start pt-4">
+                          <div className="bg-zinc-900/50 p-6 rounded-2xl flex items-center gap-4 border border-zinc-900 shadow-lg min-w-[200px]">
+                            <Bike size={24} className="text-yellow-500" />
+                            <div className="text-left">
+                               <p className="text-[8px] text-zinc-600 font-black uppercase tracking-widest">Máquina</p>
+                               <p className="font-bold text-white uppercase italic">{user?.bikeModel}</p>
+                            </div>
                           </div>
+                          {user?.birthDate && (
+                            <div className="bg-zinc-900/50 p-6 rounded-2xl flex items-center gap-4 border border-zinc-900 shadow-lg min-w-[200px]">
+                              <Cake size={24} className="text-red-600" />
+                              <div className="text-left">
+                                 <p className="text-[8px] text-zinc-600 font-black uppercase tracking-widest">Nascimento</p>
+                                 <p className="font-bold text-white uppercase italic">{new Date(user.birthDate).toLocaleDateString('pt-BR')}</p>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -557,15 +647,18 @@ const App: React.FC = () => {
 
             {currentView === 'admin' && user?.role === 'admin' && (
               <div className="max-w-4xl mx-auto space-y-12">
-                <header><h2 className="text-4xl font-oswald font-black text-white italic uppercase tracking-tighter">Admin</h2></header>
+                <header className="flex items-center gap-4">
+                  <div className="w-2 h-10 bg-yellow-500 rounded-full"></div>
+                  <h2 className="text-4xl font-oswald font-black text-white italic uppercase tracking-tighter">Admin do <span className="text-yellow-500">Capítulo</span></h2>
+                </header>
                 <div className="bg-zinc-950 p-8 rounded-[3rem] border border-zinc-900">
-                  <h3 className="text-2xl font-oswald font-black text-white uppercase mb-8 flex items-center gap-3">Recrutar Membro</h3>
+                  <h3 className="text-2xl font-oswald font-black text-white uppercase mb-8 flex items-center gap-3">Recrutar Novo Membro</h3>
                   <form onSubmit={handleRegisterNewMember} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <input type="text" required className="w-full bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-2xl" placeholder="Nome" value={newMemberForm.name} onChange={e => setNewMemberForm({...newMemberForm, name: e.target.value})} />
-                    <input type="email" required className="w-full bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-2xl" placeholder="Email" value={newMemberForm.email} onChange={e => setNewMemberForm({...newMemberForm, email: e.target.value})} />
+                    <input type="text" required className="w-full bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-2xl" placeholder="Nome de Estrada" value={newMemberForm.name} onChange={e => setNewMemberForm({...newMemberForm, name: e.target.value})} />
+                    <input type="email" required className="w-full bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-2xl" placeholder="Email Oficial" value={newMemberForm.email} onChange={e => setNewMemberForm({...newMemberForm, email: e.target.value})} />
                     <input type="text" className="w-full bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-2xl" placeholder="Motocicleta" value={newMemberForm.bikeModel} onChange={e => setNewMemberForm({...newMemberForm, bikeModel: e.target.value})} />
-                    <input type="text" required className="w-full bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-2xl" placeholder="Senha" value={newMemberForm.password} onChange={e => setNewMemberForm({...newMemberForm, password: e.target.value})} />
-                    <button type="submit" disabled={isUpdating} className="md:col-span-2 bg-yellow-500 text-black py-5 rounded-2xl font-black uppercase">Salvar</button>
+                    <input type="text" required className="w-full bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-2xl" placeholder="Senha Temporária" value={newMemberForm.password} onChange={e => setNewMemberForm({...newMemberForm, password: e.target.value})} />
+                    <button type="submit" disabled={isUpdating} className="md:col-span-2 bg-yellow-500 text-black py-5 rounded-2xl font-black uppercase shadow-xl">Cadastrar Membro</button>
                   </form>
                 </div>
               </div>
@@ -575,24 +668,27 @@ const App: React.FC = () => {
             
             {currentView === 'my-routes' && (
               <div className="space-y-12">
-                <header><h2 className="text-4xl font-oswald font-black text-white italic uppercase tracking-tighter">Mural</h2></header>
+                <header className="flex items-center gap-4">
+                  <div className="w-2 h-10 bg-red-600 rounded-full"></div>
+                  <h2 className="text-4xl font-oswald font-black text-white italic uppercase tracking-tighter">Mural de <span className="text-yellow-500">Missões</span></h2>
+                </header>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                   {routes.length > 0 ? routes.map(route => (
-                    <div key={route.id} className="bg-zinc-950 rounded-[2.5rem] border border-zinc-900 overflow-hidden shadow-2xl group flex flex-col relative">
-                      <MapView points={route.points} className="h-48 border-none grayscale group-hover:grayscale-0 transition-all" />
+                    <div key={route.id} className="bg-zinc-950 rounded-[2.5rem] border border-zinc-900 overflow-hidden shadow-2xl group flex flex-col relative hover:border-red-600/30 transition-all">
+                      <MapView points={route.points} className="h-48 border-none grayscale group-hover:grayscale-0 transition-all duration-500" />
                       {(route.user_id === user?.id || user?.role === 'admin') && (
-                        <button onClick={() => handleDeleteRoute(route.id)} className="absolute top-4 right-4 p-3 bg-black/60 backdrop-blur-md rounded-xl text-zinc-500 hover:text-red-500 transition-all z-10"><Trash2 size={16} /></button>
+                        <button onClick={() => handleDeleteRoute(route.id)} className="absolute top-4 right-4 p-3 bg-black/60 backdrop-blur-md rounded-xl text-zinc-500 hover:text-red-500 transition-all z-10 opacity-0 group-hover:opacity-100"><Trash2 size={16} /></button>
                       )}
                       <div className="p-8">
-                         <h3 className="text-2xl font-oswald font-black text-white uppercase italic truncate">{route.title}</h3>
+                         <h3 className="text-2xl font-oswald font-black text-white uppercase italic truncate tracking-tighter">{route.title}</h3>
                          <div className="flex items-center justify-between mt-4">
-                           <p className="text-zinc-500 text-[10px] font-bold uppercase">{route.distance}</p>
+                           <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest">{route.distance} Rodados</p>
                            <span className={`px-2 py-1 rounded-md text-[9px] uppercase italic border ${getDifficultyColor(route.difficulty)}`}>{route.difficulty}</span>
                         </div>
                       </div>
                     </div>
                   )) : (
-                    <div className="col-span-full py-32 text-center text-zinc-500 uppercase italic tracking-widest">Mural vazio...</div>
+                    <div className="col-span-full py-32 text-center bg-zinc-900/10 rounded-[3rem] border border-dashed border-zinc-800 text-zinc-500 uppercase italic tracking-widest">Aguardando telemetria...</div>
                   )}
                 </div>
               </div>
@@ -604,17 +700,17 @@ const App: React.FC = () => {
 
       {insights && insights !== 'carregando' && (
         <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl animate-in fade-in">
-          <div className="bg-zinc-950 border border-zinc-900 p-10 rounded-[3rem] max-w-2xl w-full relative shadow-3xl">
-            <button onClick={() => setInsights(null)} className="absolute top-6 right-6 text-zinc-600 hover:text-white">✕</button>
-            <h3 className="text-2xl font-oswald font-black text-white uppercase italic mb-10">Briefing IA</h3>
+          <div className="bg-zinc-950 border border-zinc-900 p-10 md:p-16 rounded-[3rem] max-w-2xl w-full relative shadow-3xl">
+            <button onClick={() => setInsights(null)} className="absolute top-8 right-8 text-zinc-600 hover:text-white transition-colors">✕</button>
+            <h3 className="text-3xl font-oswald font-black text-white uppercase italic mb-10">Briefing de <span className="text-yellow-500">Missão</span></h3>
             <div className="space-y-6 text-zinc-300">
               {insights.safetyTips.map((tip: string, i: number) => (
-                <div key={i} className="p-4 bg-zinc-900/40 rounded-xl border border-zinc-800/50 flex gap-4">
-                  <span className="text-yellow-500 font-black italic">0{i+1}</span>
-                  <p>{tip}</p>
+                <div key={i} className="p-6 bg-zinc-900/40 rounded-2xl border border-zinc-800/50 flex gap-4 shadow-sm">
+                  <span className="text-yellow-500 font-black italic text-xl">0{i+1}</span>
+                  <p className="leading-relaxed">{tip}</p>
                 </div>
               ))}
-              <div className="p-6 bg-yellow-500/5 rounded-2xl border border-yellow-500/10 italic text-zinc-400 text-center">"{insights.scenicHighlight}"</div>
+              <div className="p-8 bg-yellow-500/5 rounded-[2.5rem] border border-yellow-500/10 italic text-zinc-400 text-center leading-relaxed font-light text-lg">"{insights.scenicHighlight}"</div>
             </div>
           </div>
         </div>
@@ -622,7 +718,10 @@ const App: React.FC = () => {
 
       {insights === 'carregando' && (
         <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
-          <Loader2 className="animate-spin text-yellow-500" size={40} />
+          <div className="bg-zinc-950 p-10 rounded-3xl border border-zinc-900 flex flex-col items-center gap-4">
+             <Loader2 className="animate-spin text-yellow-500" size={48} />
+             <p className="text-white font-oswald font-black uppercase italic tracking-widest text-sm">Consultando Radar Gemini...</p>
+          </div>
         </div>
       )}
     </div>
