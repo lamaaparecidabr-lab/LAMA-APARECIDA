@@ -1,7 +1,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-// Sanitização robusta: remove aspas simples, duplas e espaços extras que o Vercel pode incluir
+// Sanitização robusta: remove aspas simples, duplas e espaços extras que podem vir do ambiente de deploy
 const sanitizeEnv = (val?: string) => val?.replace(/['"]/g, '').trim() || '';
 
 const supabaseUrl = sanitizeEnv(process.env.SUPABASE_URL || 'https://lvlflziahcthajmlgmme.supabase.co');
@@ -15,6 +15,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: true
+    detectSessionInUrl: true,
+    storage: window.localStorage // Garante uso explícito do localStorage para evitar logouts indesejados
   }
 });

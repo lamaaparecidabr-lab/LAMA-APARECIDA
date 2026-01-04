@@ -229,7 +229,7 @@ const App: React.FC = () => {
   };
 
   const resizeImage = (file: File): Promise<string> => {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => {
         const img = new Image();
@@ -237,7 +237,7 @@ const App: React.FC = () => {
           const canvas = document.createElement('canvas');
           let width = img.width;
           let height = img.height;
-          const maxDim = 400; // Redimensionar para max 400px para garantir que caiba no payload do Vercel
+          const maxDim = 320; // Redução estratégica para manter o payload pequeno
           if (width > height) {
             if (width > maxDim) {
               height *= maxDim / width;
@@ -253,10 +253,12 @@ const App: React.FC = () => {
           canvas.height = height;
           const ctx = canvas.getContext('2d');
           ctx?.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL('image/jpeg', 0.7)); // Compressão 70%
+          resolve(canvas.toDataURL('image/jpeg', 0.6)); // Qualidade de compressão equilibrada
         };
+        img.onerror = () => reject("Erro ao processar imagem");
         img.src = e.target?.result as string;
       };
+      reader.onerror = () => reject("Erro ao ler arquivo");
       reader.readAsDataURL(file);
     });
   };
@@ -264,8 +266,12 @@ const App: React.FC = () => {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const resizedBase64 = await resizeImage(file);
-      setEditForm(prev => ({ ...prev, avatar: resizedBase64 }));
+      try {
+        const resizedBase64 = await resizeImage(file);
+        setEditForm(prev => ({ ...prev, avatar: resizedBase64 }));
+      } catch (err) {
+        alert("Falha ao processar imagem. Tente outra foto.");
+      }
     }
   };
 
@@ -275,7 +281,7 @@ const App: React.FC = () => {
     setIsUpdating(true);
 
     try {
-      // 1. Atualizar tabela de perfis
+      // 1. Atualizar tabela de perfis (Fonte da verdade para dados pesados como Base64)
       const { error: dbError } = await supabase
         .from('profiles')
         .update({
@@ -288,22 +294,26 @@ const App: React.FC = () => {
 
       if (dbError) throw dbError;
 
-      // 2. Atualizar metadados básicos (apenas textos curtos)
+      // 2. Atualizar Auth Metadata apenas com textos curtos. 
+      // NUNCA enviar o avatar (base64) aqui para evitar erro "Failed to fetch" (payload limit) no Vercel.
       const { error: authError } = await supabase.auth.updateUser({
         data: {
           name: editForm.name,
           bikeModel: editForm.bikeModel
+          // avatar OMITIDO propositalmente
         }
       });
 
-      if (authError) throw authError;
+      if (authError) {
+        console.warn("Auth Meta não atualizado, mas o perfil no banco está OK.", authError);
+      }
 
       setIsEditingProfile(false);
-      alert("Perfil salvo com sucesso!");
       setUser({ ...user, ...editForm });
+      alert("Perfil atualizado com sucesso!");
     } catch (error: any) {
       console.error("Erro ao salvar perfil:", error);
-      alert("Erro ao salvar perfil. Tente novamente.");
+      alert("Falha ao salvar perfil. Verifique sua conexão ou tente uma imagem menor.");
     } finally {
       setIsUpdating(false);
     }
@@ -584,10 +594,10 @@ const App: React.FC = () => {
                           <input type="date" className="w-full bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-2xl outline-none focus:border-yellow-500/50" value={editForm.birthDate} onChange={e => setEditForm({...editForm, birthDate: e.target.value})} />
                         </div>
                         <div className="space-y-2">
-                          <label className="text-[9px] font-black uppercase tracking-widest text-zinc-600 ml-4">Foto (Redimensionada)</label>
+                          <label className="text-[9px] font-black uppercase tracking-widest text-zinc-600 ml-4">Foto de Perfil</label>
                           <div className="flex items-center gap-4">
                              <label className="flex-1 cursor-pointer bg-zinc-900 border border-zinc-800 border-dashed text-zinc-500 px-6 py-4 rounded-2xl text-center hover:border-yellow-500/50 transition-all font-black text-[10px] uppercase tracking-widest">
-                               Trocar Imagem <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+                               <Camera size={16} className="inline mr-2" /> Trocar Imagem <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
                              </label>
                              {editForm.avatar && <img src={editForm.avatar} alt="Preview" className="w-14 h-14 rounded-xl object-cover border border-zinc-800 shadow-xl" />}
                           </div>
@@ -651,14 +661,14 @@ const App: React.FC = () => {
                   <div className="w-2 h-10 bg-yellow-500 rounded-full"></div>
                   <h2 className="text-4xl font-oswald font-black text-white italic uppercase tracking-tighter">Admin do <span className="text-yellow-500">Capítulo</span></h2>
                 </header>
-                <div className="bg-zinc-950 p-8 rounded-[3rem] border border-zinc-900">
+                <div className="bg-zinc-950 p-8 rounded-[3rem] border border-zinc-900 shadow-3xl">
                   <h3 className="text-2xl font-oswald font-black text-white uppercase mb-8 flex items-center gap-3">Recrutar Novo Membro</h3>
                   <form onSubmit={handleRegisterNewMember} className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <input type="text" required className="w-full bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-2xl" placeholder="Nome de Estrada" value={newMemberForm.name} onChange={e => setNewMemberForm({...newMemberForm, name: e.target.value})} />
                     <input type="email" required className="w-full bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-2xl" placeholder="Email Oficial" value={newMemberForm.email} onChange={e => setNewMemberForm({...newMemberForm, email: e.target.value})} />
                     <input type="text" className="w-full bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-2xl" placeholder="Motocicleta" value={newMemberForm.bikeModel} onChange={e => setNewMemberForm({...newMemberForm, bikeModel: e.target.value})} />
                     <input type="text" required className="w-full bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-2xl" placeholder="Senha Temporária" value={newMemberForm.password} onChange={e => setNewMemberForm({...newMemberForm, password: e.target.value})} />
-                    <button type="submit" disabled={isUpdating} className="md:col-span-2 bg-yellow-500 text-black py-5 rounded-2xl font-black uppercase shadow-xl">Cadastrar Membro</button>
+                    <button type="submit" disabled={isUpdating} className="md:col-span-2 bg-yellow-500 text-black py-5 rounded-2xl font-black uppercase shadow-xl hover:bg-yellow-400 transition-all">Cadastrar Membro</button>
                   </form>
                 </div>
               </div>
