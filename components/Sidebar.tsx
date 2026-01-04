@@ -10,7 +10,8 @@ interface SidebarProps {
   onLogout: () => void;
 }
 
-const LAMA_LOGO_URL = 'https://github.com/lamaaparecidabr-lab/LAMA-APARECIDA/blob/main/components/logo.jpg?raw=true';
+// URL otimizada para ativos estáticos no Vercel
+const LAMA_LOGO_URL = 'https://raw.githubusercontent.com/lamaaparecidabr-lab/LAMA-APARECIDA/main/components/logo.jpg';
 
 export const Sidebar: React.FC<SidebarProps> = ({ user, currentView, setView, onLogout }) => {
   const isAdmin = user?.role === 'admin' || user?.email === 'lama.aparecidabr@gmail.com';
@@ -86,7 +87,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ user, currentView, setView, on
         )}
       </aside>
 
-      {/* Mobile Bottom Navigation - Single row, ultra compact */}
+      {/* Mobile Bottom Navigation */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-2xl border-t border-zinc-900 z-[2000] shadow-[0_-5px_30px_rgba(0,0,0,0.8)]">
         <div className="flex items-center justify-around h-14 px-1">
           {menuItems.map((item) => (

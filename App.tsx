@@ -8,7 +8,8 @@ import { Bike, Compass, Users, Calendar, Trophy, Image as ImageIcon, ExternalLin
 import { getRouteInsights } from './services/geminiService';
 import { supabase } from './services/supabaseClient';
 
-const LAMA_LOGO_URL = 'https://github.com/lamaaparecidabr-lab/LAMA-APARECIDA/blob/main/components/logo.jpg?raw=true';
+// URL otimizada para evitar bloqueios de CORS no Vercel e redirecionamentos do GitHub
+const LAMA_LOGO_URL = 'https://raw.githubusercontent.com/lamaaparecidabr-lab/LAMA-APARECIDA/main/components/logo.jpg';
 const YOUTUBE_ID = '-VzuMRXCizo';
 
 const CLUBHOUSE_COORDS = { lat: -16.7908906, lng: -49.2311547 };
@@ -112,7 +113,6 @@ const App: React.FC = () => {
         .eq('id', supabaseUser.id)
         .single();
 
-      // Se for um novo usuário, o perfil pode demorar a ser criado pelo trigger do banco
       if (error && retryCount < 3) {
         setTimeout(() => syncUserData(supabaseUser, retryCount + 1), 500);
         return;
@@ -220,7 +220,7 @@ const App: React.FC = () => {
         return;
       }
       if (file.size > 2 * 1024 * 1024) {
-        alert("Arquivo muito pesado! O limite é de 2MB por foto para garantir a performance do Radar.");
+        alert("Arquivo muito pesado! O limite é de 2MB por foto.");
         return;
       }
 
@@ -238,7 +238,6 @@ const App: React.FC = () => {
     
     setIsUpdating(true);
     
-    // 1. Atualiza Metadata do Auth para garantir redundância
     const { error: authError } = await supabase.auth.updateUser({
       data: {
         name: editForm.name,
@@ -247,7 +246,6 @@ const App: React.FC = () => {
       }
     });
 
-    // 2. Atualiza Tabela Profiles (O RLS garante que o usuário só altere o próprio ID)
     const { error: dbError } = await supabase
       .from('profiles')
       .update({
@@ -260,10 +258,10 @@ const App: React.FC = () => {
 
     if (authError || dbError) {
       console.error(authError, dbError);
-      alert("Falha na telemetria de perfil. Verifique sua conexão.");
+      alert("Falha na telemetria de perfil.");
     } else {
       setIsEditingProfile(false);
-      alert("Perfil atualizado com sucesso!");
+      alert("Perfil atualizado!");
       setUser({ ...user, ...editForm });
     }
     setIsUpdating(false);
@@ -272,11 +270,11 @@ const App: React.FC = () => {
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (passwordForm.newPassword.length < 6) {
-      alert("A nova senha deve ter no mínimo 6 caracteres.");
+      alert("Senha deve ter no mínimo 6 caracteres.");
       return;
     }
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      alert("Os códigos não batem! Verifique as senhas.");
+      alert("As senhas não batem!");
       return;
     }
     setIsUpdating(true);
@@ -287,7 +285,7 @@ const App: React.FC = () => {
     if (error) {
       alert("Erro ao redefinir: " + error.message);
     } else {
-      alert("Código de acesso alterado!");
+      alert("Senha alterada!");
       setIsChangingPassword(false);
       setPasswordForm({ newPassword: '', confirmPassword: '' });
     }
@@ -300,9 +298,8 @@ const App: React.FC = () => {
   };
 
   const handleSaveRoute = async (newRoute: Route) => {
-    // Segurança contra abuso de armazenamento
     if (newRoute.points.length > 5000) {
-      alert("Erro: Rota muito longa para processamento em tempo real. Tente gravar percursos menores.");
+      alert("Erro: Rota muito longa.");
       return;
     }
 
@@ -322,17 +319,16 @@ const App: React.FC = () => {
 
     if (error) {
       console.error(error);
-      alert("Falha ao transmitir rota. O banco de dados bloqueou a operação por segurança.");
+      alert("Falha ao transmitir rota. Verifique as permissões.");
     } else {
       fetchRoutes();
-      alert("Missão enviada para o Mural com sucesso!");
+      alert("Missão enviada para o Mural!");
     }
   };
 
   const handleDeleteRoute = async (routeId: string) => {
-    if (!confirm("Deseja realmente apagar este registro de missão?")) return;
+    if (!confirm("Deseja realmente apagar este registro?")) return;
     
-    // O RLS no banco garante que apenas o dono ou o admin possa deletar
     const { error } = await supabase
       .from('routes')
       .delete()
@@ -386,7 +382,7 @@ const App: React.FC = () => {
     <div className="min-h-[70vh] flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-zinc-900/95 border border-zinc-800 p-8 md:p-12 rounded-[2.5rem] shadow-2xl backdrop-blur-xl">
         <div className="text-center mb-10">
-          <img src={LAMA_LOGO_URL} alt="Logo" className="w-24 h-24 mx-auto mb-6" />
+          <img src={LAMA_LOGO_URL} alt="Logo" className="w-24 h-24 mx-auto mb-6 object-contain" />
           <h2 className="text-3xl font-oswald text-white font-black uppercase italic tracking-tighter">Sede Virtual</h2>
           <p className="text-zinc-500 text-[10px] mt-2 uppercase tracking-widest font-black">Acesso Exclusivo para Membros</p>
         </div>
@@ -556,12 +552,12 @@ const App: React.FC = () => {
                           <input type="date" className="w-full bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-2xl outline-none" value={editForm.birthDate} onChange={e => setEditForm({...editForm, birthDate: e.target.value})} />
                         </div>
                         <div className="space-y-2">
-                          <label className="text-[9px] font-black uppercase tracking-widest text-zinc-600 ml-4">Foto de Perfil (JPG/PNG - Max 2MB)</label>
+                          <label className="text-[9px] font-black uppercase tracking-widest text-zinc-600 ml-4">Foto de Perfil (Max 2MB)</label>
                           <div className="flex items-center gap-4">
                             <label className="flex-1 cursor-pointer bg-zinc-900 border border-zinc-800 border-dashed hover:border-yellow-500/50 text-zinc-500 hover:text-white px-6 py-4 rounded-2xl transition-all flex items-center justify-center gap-3">
                               <Camera size={20} />
                               <span className="text-[10px] font-black uppercase tracking-widest">Selecionar Foto</span>
-                              <input type="file" accept="image/png, image/jpeg" className="hidden" onChange={handleFileChange} />
+                              <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
                             </label>
                             {editForm.avatar && (
                               <img src={editForm.avatar} alt="Preview" className="w-14 h-14 rounded-xl object-cover border border-zinc-800" />
@@ -676,7 +672,7 @@ const App: React.FC = () => {
                       </div>
                     </div>
                   )) : (
-                    <div className="col-span-full py-32 text-center bg-zinc-900/10 rounded-[3rem] border border-dashed border-zinc-800 text-zinc-500 font-black uppercase italic tracking-widest">Aguardando telemetria na base de dados...</div>
+                    <div className="col-span-full py-32 text-center bg-zinc-900/10 rounded-[3rem] border border-dashed border-zinc-800 text-zinc-500 font-black uppercase italic tracking-widest">Aguardando telemetria...</div>
                   )}
                 </div>
               </div>
@@ -747,7 +743,7 @@ const App: React.FC = () => {
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 h-full">
                 <header>
                   <h2 className="text-4xl font-oswald font-bold uppercase text-white italic">Nossa <span className="text-yellow-500">Galeria</span></h2>
-                  <p className="text-zinc-400 mt-2">Registros históricos e momentos da irmandade em Aparecida.</p>
+                  <p className="text-zinc-400 mt-2">Registros históricos e momentos da irmandade.</p>
                 </header>
 
                 <div className="relative bg-zinc-900 rounded-[2.5rem] md:rounded-[3rem] border border-zinc-800 overflow-hidden min-h-[400px] md:min-h-[500px] flex flex-col items-center justify-center p-8 md:p-12 text-center shadow-2xl">
@@ -761,7 +757,7 @@ const App: React.FC = () => {
                     </div>
                     <h3 className="text-2xl md:text-3xl font-oswald font-bold text-white uppercase italic">Explore Nossa História no <span className="text-blue-500">Facebook</span></h3>
                     <p className="text-zinc-400 text-base md:text-lg leading-relaxed">
-                      Mantemos nossa galeria oficial atualizada em nossa página do Facebook. Clique no botão abaixo para ver as fotos das nossas últimas rotas, eventos e encontros.
+                      Mantemos nossa galeria oficial atualizada em nossa página do Facebook.
                     </p>
                     <a 
                       href="https://www.facebook.com/lamaaparecidabr/photos" 
@@ -769,7 +765,7 @@ const App: React.FC = () => {
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-3 bg-yellow-500 hover:bg-yellow-600 text-black px-8 md:px-10 py-4 md:py-5 rounded-2xl font-bold text-sm md:text-lg transition-all transform hover:scale-105 shadow-xl shadow-yellow-500/20 uppercase tracking-widest"
                     >
-                      ACESSAR GALERIA OFICIAL <ExternalLink size={20} />
+                      ACESSAR GALERIA <ExternalLink size={20} />
                     </a>
                   </div>
                 </div>
