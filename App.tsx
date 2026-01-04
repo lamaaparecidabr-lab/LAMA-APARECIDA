@@ -8,7 +8,7 @@ import { Bike, Compass, Users, Calendar, Trophy, Image as ImageIcon, ExternalLin
 import { getRouteInsights } from './services/geminiService';
 import { supabase } from './services/supabaseClient';
 
-// URL robusta do GitHub (Raw) para garantir carregamento em produção
+// URL direta e estável para a logo no GitHub
 const LAMA_LOGO_URL = 'https://raw.githubusercontent.com/lamaaparecidabr-lab/LAMA-APARECIDA/main/components/logo.jpg';
 const YOUTUBE_ID = '-VzuMRXCizo';
 
@@ -189,13 +189,15 @@ const App: React.FC = () => {
   const handleLogout = async () => {
     setIsLoading(true);
     try {
-      await supabase.auth.signOut();
-      // O listener onAuthStateChange cuidará de setar Authenticated para false
-    } catch (err) {
-      console.error("Erro no logout:", err);
-      // Fallback
+      // Limpeza imediata do estado para resposta visual instantânea
       setIsAuthenticated(false);
       setUser(null);
+      setView('home');
+      await supabase.auth.signOut();
+      localStorage.clear(); // Garante que nenhum vestígio de sessão permaneça
+    } catch (err) {
+      console.error("Erro no logout:", err);
+    } finally {
       setIsLoading(false);
     }
   };
@@ -243,24 +245,41 @@ const App: React.FC = () => {
     e.preventDefault();
     if (!user) return;
     setIsUpdating(true);
-    const { error: dbError } = await supabase
-      .from('profiles')
-      .update({
-        name: editForm.name,
-        bike_model: editForm.bikeModel,
-        avatar_url: editForm.avatar,
-        birth_date: editForm.birthDate
-      })
-      .eq('id', user.id);
 
-    if (dbError) {
-      alert("Falha na telemetria.");
-    } else {
+    try {
+      // Atualiza metadados de Auth (para sincronia de sessão)
+      const { error: authError } = await supabase.auth.updateUser({
+        data: {
+          name: editForm.name,
+          bikeModel: editForm.bikeModel,
+          avatar: editForm.avatar
+        }
+      });
+
+      if (authError) throw authError;
+
+      // Atualiza tabela de perfis (para persistência pública)
+      const { error: dbError } = await supabase
+        .from('profiles')
+        .update({
+          name: editForm.name,
+          bike_model: editForm.bikeModel,
+          avatar_url: editForm.avatar,
+          birth_date: editForm.birthDate
+        })
+        .eq('id', user.id);
+
+      if (dbError) throw dbError;
+
       setIsEditingProfile(false);
-      alert("Perfil atualizado!");
+      alert("Perfil atualizado com sucesso!");
       setUser({ ...user, ...editForm });
+    } catch (error: any) {
+      console.error("Erro ao salvar perfil:", error);
+      alert("Falha ao salvar perfil: " + (error.message || "Erro desconhecido"));
+    } finally {
+      setIsUpdating(false);
     }
-    setIsUpdating(false);
   };
 
   const handleChangePassword = async (e: React.FormEvent) => {
@@ -351,7 +370,14 @@ const App: React.FC = () => {
     <div className="min-h-[70vh] flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-zinc-900/95 border border-zinc-800 p-8 md:p-12 rounded-[2.5rem] shadow-2xl backdrop-blur-xl">
         <div className="text-center mb-10">
-          <img src={LAMA_LOGO_URL} alt="Logo" className="w-24 h-24 mx-auto mb-6 object-contain" />
+          <img 
+            src={LAMA_LOGO_URL} 
+            alt="Logo" 
+            className="w-24 h-24 mx-auto mb-6 object-contain"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = 'https://raw.githubusercontent.com/lamaaparecidabr-lab/LAMA-APARECIDA/main/components/logo.jpg';
+            }}
+          />
           <h2 className="text-3xl font-oswald text-white font-black uppercase italic tracking-tighter">Sede Virtual</h2>
           <p className="text-zinc-500 text-[10px] mt-2 uppercase tracking-widest font-black">Acesso Exclusivo para Membros</p>
         </div>
@@ -407,7 +433,14 @@ const App: React.FC = () => {
               <div className="space-y-6 md:space-y-8">
                 <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-zinc-900 pb-12">
                   <div className="flex items-center gap-6 md:gap-10">
-                    <img src={LAMA_LOGO_URL} alt="Logo" className="w-20 h-20 md:w-28 md:h-28 object-contain" />
+                    <img 
+                      src={LAMA_LOGO_URL} 
+                      alt="Logo" 
+                      className="w-20 h-20 md:w-28 md:h-28 object-contain" 
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = 'https://raw.githubusercontent.com/lamaaparecidabr-lab/LAMA-APARECIDA/main/components/logo.jpg';
+                      }}
+                    />
                     <div>
                       <span className="text-yellow-500 font-black uppercase tracking-widest text-xs md:text-lg">LATIN AMERICAN MOTORCYCLE ASSOCIATION</span>
                       <h1 className="text-3xl md:text-5xl font-oswald font-black text-white uppercase italic mt-1 md:mt-2">Capítulo <span className="text-yellow-500">Aparecida</span></h1>

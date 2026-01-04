@@ -41,7 +41,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ user, currentView, setView, on
               alt="LAMA" 
               className="relative w-16 h-16 object-contain filter drop-shadow-[0_0_10px_rgba(234,179,8,0.3)] transform group-hover:scale-110 transition-transform duration-500" 
               onError={(e) => {
-                (e.target as HTMLImageElement).src = 'https://github.com/lamaaparecidabr-lab/LAMA-APARECIDA/blob/main/components/logo.jpg?raw=true';
+                (e.target as HTMLImageElement).src = 'https://raw.githubusercontent.com/lamaaparecidabr-lab/LAMA-APARECIDA/main/components/logo.jpg';
               }}
             />
           </div>
