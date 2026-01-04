@@ -7,7 +7,7 @@ import { View, User, Route } from './types';
 import { Bike, Compass, Users, Calendar, Trophy, Image as ImageIcon, ExternalLink, Shield, Gauge, ChevronRight, Zap, Map, Volume2, VolumeX, Maximize2, MapPin, Navigation, Lock, Radio, Award, Star } from 'lucide-react';
 import { getRouteInsights } from './services/geminiService';
 
-const LAMA_LOGO_URL = 'https://github.com/lamaaparecidabr-lab/LAMA-APARECIDA/blob/main/components/logo.jpg';
+const LAMA_LOGO_URL = 'https://github.com/lamaaparecidabr-lab/LAMA-APARECIDA/blob/main/components/logo.jpg?raw=true';
 const YOUTUBE_ID = '-VzuMRXCizo';
 
 // Coordenadas exatas do L.A.M.A. Aparecida Casa Club
