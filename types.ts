@@ -5,6 +5,8 @@ export interface User {
   email: string;
   bikeModel?: string;
   avatar?: string;
+  birthDate?: string;
+  role?: 'admin' | 'member';
 }
 
 export interface RoutePoint {
@@ -15,6 +17,7 @@ export interface RoutePoint {
 
 export interface Route {
   id: string;
+  user_id?: string;
   title: string;
   description: string;
   distance: string;
@@ -25,4 +28,4 @@ export interface Route {
   isOfficial?: boolean;
 }
 
-export type View = 'home' | 'explorer' | 'my-routes' | 'profile' | 'tracking' | 'gallery' | 'clubhouse';
+export type View = 'home' | 'explorer' | 'my-routes' | 'profile' | 'tracking' | 'gallery' | 'clubhouse' | 'admin';

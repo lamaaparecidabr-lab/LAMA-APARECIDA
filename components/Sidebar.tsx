@@ -1,27 +1,33 @@
 
 import React from 'react';
-import { Home, Compass, Map, User, LogOut, Radio, Image as ImageIcon, MapPin } from 'lucide-react';
-import { View } from '../types';
+import { Home, Compass, Map, User, LogOut, Radio, Image as ImageIcon, MapPin, Settings } from 'lucide-react';
+import { View, User as UserType } from '../types';
 
 interface SidebarProps {
+  user: UserType | null;
   currentView: View;
   setView: (view: View) => void;
   onLogout: () => void;
 }
 
-// URL sincronizada com App.tsx para garantir o carregamento
 const LAMA_LOGO_URL = 'https://github.com/lamaaparecidabr-lab/LAMA-APARECIDA/blob/main/components/logo.jpg?raw=true';
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, onLogout }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ user, currentView, setView, onLogout }) => {
+  const isAdmin = user?.role === 'admin' || user?.email === 'lama.aparecidabr@gmail.com';
+
   const menuItems = [
     { id: 'home', icon: Home, label: 'Início' },
     { id: 'clubhouse', icon: MapPin, label: 'Sede' },
     { id: 'explorer', icon: Compass, label: 'Icônicas' },
     { id: 'tracking', icon: Radio, label: 'Gravar' },
-    { id: 'my-routes', icon: Map, label: 'Rotas' },
+    { id: 'my-routes', icon: Map, label: 'Mural' },
     { id: 'gallery', icon: ImageIcon, label: 'Galeria' },
     { id: 'profile', icon: User, label: 'Perfil' },
   ];
+
+  if (isAdmin) {
+    menuItems.push({ id: 'admin', icon: Settings, label: 'Admin' });
+  }
 
   return (
     <>
@@ -67,47 +73,48 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, onLogout
           </ul>
         </nav>
 
-        <div className="p-8 border-t border-zinc-900/50">
-          <button 
-            onClick={onLogout} 
-            className="w-full flex items-center gap-6 px-7 py-5 text-zinc-800 hover:text-red-600 hover:bg-red-600/5 rounded-[2rem] transition-all group"
-          >
-            <LogOut size={22} className="group-hover:-translate-x-1 transition-transform" />
-            <span className="font-black uppercase tracking-[0.25em] text-[9px]">Sair</span>
-          </button>
-        </div>
+        {user && (
+          <div className="p-8 border-t border-zinc-900/50">
+            <button 
+              onClick={onLogout} 
+              className="w-full flex items-center gap-6 px-7 py-5 text-zinc-800 hover:text-red-600 hover:bg-red-600/5 rounded-[2rem] transition-all group"
+            >
+              <LogOut size={22} className="group-hover:-translate-x-1 transition-transform" />
+              <span className="font-black uppercase tracking-[0.25em] text-[9px]">Sair do Radar</span>
+            </button>
+          </div>
+        )}
       </aside>
 
-      {/* Mobile Bottom Navigation - Ultra Compacta e Discreta */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-xl border-t border-zinc-900 p-1 z-[2000] shadow-[0_-5px_30px_rgba(0,0,0,0.8)]">
-        <div className="grid grid-cols-4 gap-0">
+      {/* Mobile Bottom Navigation - Single row, ultra compact */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-2xl border-t border-zinc-900 z-[2000] shadow-[0_-5px_30px_rgba(0,0,0,0.8)]">
+        <div className="flex items-center justify-around h-14 px-1">
           {menuItems.map((item) => (
             <button
               key={item.id}
               onClick={() => setView(item.id as View)}
-              className={`flex flex-col items-center justify-center py-1 rounded-lg transition-all duration-200 ${
-                currentView === item.id 
-                  ? 'text-yellow-500 bg-yellow-500/5' 
-                  : 'text-zinc-500 active:bg-zinc-800'
+              className={`flex flex-col items-center justify-center flex-1 transition-all relative ${
+                currentView === item.id ? 'text-yellow-500' : 'text-zinc-500'
               }`}
             >
-              <item.icon 
-                size={13} 
-                strokeWidth={currentView === item.id ? 3 : 2} 
-                className={`mb-0 transition-transform ${currentView === item.id ? 'scale-110' : ''}`}
-              />
-              <span className="text-[5.5px] font-black uppercase tracking-tight text-center leading-none">
+              <item.icon size={16} strokeWidth={currentView === item.id ? 2.5 : 2} />
+              <span className="text-[6px] font-black uppercase mt-0.5 tracking-tighter text-center whitespace-nowrap">
                 {item.label}
               </span>
+              {currentView === item.id && (
+                <div className="absolute bottom-0 w-4 h-0.5 bg-yellow-500 rounded-full"></div>
+              )}
             </button>
           ))}
-          <button
-            onClick={onLogout}
-            className="flex flex-col items-center justify-center py-1 text-red-600/40 active:bg-red-600/10 rounded-lg transition-all"
-          >
-            <LogOut size={13} />
-            <span className="text-[5.5px] font-black uppercase tracking-tight text-center leading-none">Sair</span>
-          </button>
+          {user && (
+            <button
+              onClick={onLogout}
+              className="flex flex-col items-center justify-center flex-1 text-zinc-800"
+            >
+              <LogOut size={16} strokeWidth={2} />
+              <span className="text-[6px] font-black uppercase mt-0.5 tracking-tighter">Sair</span>
+            </button>
+          )}
         </div>
       </nav>
     </>
