@@ -9,6 +9,7 @@ interface SidebarProps {
   onLogout: () => void;
 }
 
+// URL sincronizada com App.tsx para garantir o carregamento
 const LAMA_LOGO_URL = 'https://github.com/lamaaparecidabr-lab/LAMA-APARECIDA/blob/main/components/logo.jpg?raw=true';
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, onLogout }) => {
