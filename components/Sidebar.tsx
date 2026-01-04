@@ -10,8 +10,8 @@ interface SidebarProps {
   onLogout: () => void;
 }
 
-// URL otimizada para ativos estáticos no Vercel
-const LAMA_LOGO_URL = 'https://raw.githubusercontent.com/lamaaparecidabr-lab/LAMA-APARECIDA/main/components/logo.jpg';
+// URL otimizada para ativos estáticos no Vercel (mantendo ?raw=true para compatibilidade)
+const LAMA_LOGO_URL = 'https://github.com/lamaaparecidabr-lab/LAMA-APARECIDA/blob/main/components/logo.jpg?raw=true';
 
 export const Sidebar: React.FC<SidebarProps> = ({ user, currentView, setView, onLogout }) => {
   const isAdmin = user?.role === 'admin' || user?.email === 'lama.aparecidabr@gmail.com';
@@ -37,7 +37,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ user, currentView, setView, on
         <div className="p-10 flex flex-row items-center gap-6">
           <div className="relative group shrink-0">
             <div className="absolute inset-0 bg-yellow-500/20 blur-3xl rounded-full scale-150 opacity-0 group-hover:opacity-100 transition-all duration-700"></div>
-            <img src={LAMA_LOGO_URL} alt="LAMA" className="relative w-16 h-16 object-contain filter drop-shadow-[0_0_15px_rgba(234,179,8,0.4)] transform group-hover:scale-110 transition-transform duration-500" />
+            <img 
+              src={LAMA_LOGO_URL} 
+              alt="LAMA" 
+              className="relative w-16 h-16 object-contain filter drop-shadow-[0_0_10px_rgba(234,179,8,0.3)] transform group-hover:scale-110 transition-transform duration-500" 
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = 'https://raw.githubusercontent.com/lamaaparecidabr-lab/LAMA-APARECIDA/main/components/logo.jpg';
+              }}
+            />
           </div>
           <div className="relative">
             <div className="flex flex-col">

@@ -8,8 +8,8 @@ import { Bike, Compass, Users, Calendar, Trophy, Image as ImageIcon, ExternalLin
 import { getRouteInsights } from './services/geminiService';
 import { supabase } from './services/supabaseClient';
 
-// URL otimizada para evitar bloqueios de CORS no Vercel e redirecionamentos do GitHub
-const LAMA_LOGO_URL = 'https://raw.githubusercontent.com/lamaaparecidabr-lab/LAMA-APARECIDA/main/components/logo.jpg';
+// Retornando ao formato original que garante o redirecionamento correto pelo GitHub
+const LAMA_LOGO_URL = 'https://github.com/lamaaparecidabr-lab/LAMA-APARECIDA/blob/main/components/logo.jpg?raw=true';
 const YOUTUBE_ID = '-VzuMRXCizo';
 
 const CLUBHOUSE_COORDS = { lat: -16.7908906, lng: -49.2311547 };
@@ -93,6 +93,7 @@ const App: React.FC = () => {
       } else {
         setIsAuthenticated(false);
         setUser(null);
+        setIsLoading(false);
       }
     });
 
@@ -139,6 +140,9 @@ const App: React.FC = () => {
     } catch (err) {
       console.error("Erro na sincronização de dados:", err);
       setIsAuthenticated(true);
+    } finally {
+      // Garantir que o loading encerre após a sincronização
+      setIsLoading(false);
     }
   };
 
@@ -147,10 +151,11 @@ const App: React.FC = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         await syncUserData(session.user);
+      } else {
+        setIsLoading(false);
       }
     } catch (e) {
       console.error("Erro ao verificar sessão inicial:", e);
-    } finally {
       setIsLoading(false);
     }
   };
@@ -182,6 +187,7 @@ const App: React.FC = () => {
       alert("Radar falhou: " + error.message);
       setIsLoading(false);
     }
+    // Se sucesso, o onAuthStateChange cuidará do resto e chamará setIsLoading(false) via syncUserData
   };
 
   const handleRegisterNewMember = async (e: React.FormEvent) => {
@@ -293,8 +299,10 @@ const App: React.FC = () => {
   };
 
   const handleLogout = async () => {
+    setIsLoading(true);
     await supabase.auth.signOut();
     setView('home');
+    setIsLoading(false);
   };
 
   const handleSaveRoute = async (newRoute: Route) => {
@@ -382,7 +390,15 @@ const App: React.FC = () => {
     <div className="min-h-[70vh] flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-zinc-900/95 border border-zinc-800 p-8 md:p-12 rounded-[2.5rem] shadow-2xl backdrop-blur-xl">
         <div className="text-center mb-10">
-          <img src={LAMA_LOGO_URL} alt="Logo" className="w-24 h-24 mx-auto mb-6 object-contain" />
+          <img 
+            src={LAMA_LOGO_URL} 
+            alt="Logo" 
+            className="w-24 h-24 mx-auto mb-6 object-contain" 
+            onError={(e) => {
+              // Fallback caso o link direto falhe
+              (e.target as HTMLImageElement).src = 'https://raw.githubusercontent.com/lamaaparecidabr-lab/LAMA-APARECIDA/main/components/logo.jpg';
+            }}
+          />
           <h2 className="text-3xl font-oswald text-white font-black uppercase italic tracking-tighter">Sede Virtual</h2>
           <p className="text-zinc-500 text-[10px] mt-2 uppercase tracking-widest font-black">Acesso Exclusivo para Membros</p>
         </div>
@@ -438,7 +454,14 @@ const App: React.FC = () => {
               <div className="space-y-6 md:space-y-8">
                 <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-zinc-900 pb-12">
                   <div className="flex items-center gap-6 md:gap-10">
-                    <img src={LAMA_LOGO_URL} alt="Logo" className="w-20 h-20 md:w-28 md:h-28 object-contain" />
+                    <img 
+                      src={LAMA_LOGO_URL} 
+                      alt="Logo" 
+                      className="w-20 h-20 md:w-28 md:h-28 object-contain" 
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = 'https://raw.githubusercontent.com/lamaaparecidabr-lab/LAMA-APARECIDA/main/components/logo.jpg';
+                      }}
+                    />
                     <div>
                       <span className="text-yellow-500 font-black uppercase tracking-widest text-xs md:text-lg">LATIN AMERICAN MOTORCYCLE ASSOCIATION</span>
                       <h1 className="text-3xl md:text-5xl font-oswald font-black text-white uppercase italic mt-1 md:mt-2">Capítulo <span className="text-yellow-500">Aparecida</span></h1>
