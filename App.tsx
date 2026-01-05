@@ -237,7 +237,7 @@ const App: React.FC = () => {
           const canvas = document.createElement('canvas');
           let width = img.width;
           let height = img.height;
-          const maxDim = 256; // Reduzi ainda mais para garantir estabilidade
+          const maxDim = 256; 
           if (width > height) {
             if (width > maxDim) {
               height *= maxDim / width;
@@ -253,7 +253,7 @@ const App: React.FC = () => {
           canvas.height = height;
           const ctx = canvas.getContext('2d');
           ctx?.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL('image/jpeg', 0.5)); // Qualidade 0.5
+          resolve(canvas.toDataURL('image/jpeg', 0.5));
         };
         img.src = e.target?.result as string;
       };
@@ -271,16 +271,18 @@ const App: React.FC = () => {
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user?.id) {
+      alert("Sessão inválida. Tente sair e entrar novamente.");
+      return;
+    }
     setIsUpdating(true);
 
     try {
-      // 1. Tratamento da data para evitar erro de sintaxe do Postgres
       const formattedBirthDate = editForm.birthDate && editForm.birthDate.trim() !== "" 
         ? editForm.birthDate 
         : null;
 
-      // 2. Upsert na tabela Profiles
+      // 1. Database Update (Profiles)
       const { error: dbError } = await supabase
         .from('profiles')
         .upsert({
@@ -296,7 +298,7 @@ const App: React.FC = () => {
 
       if (dbError) throw dbError;
 
-      // 3. Atualiza os dados básicos no Auth (Metadados leves)
+      // 2. Auth Metadata Update
       const { error: authError } = await supabase.auth.updateUser({
         data: {
           name: editForm.name,
@@ -306,7 +308,7 @@ const App: React.FC = () => {
 
       if (authError) throw authError;
 
-      // 4. Atualiza estado local e fecha edição
+      // Local state update
       setIsEditingProfile(false);
       setUser({ 
         ...user, 
@@ -315,12 +317,18 @@ const App: React.FC = () => {
         avatar: editForm.avatar, 
         birthDate: formattedBirthDate || "" 
       });
-      alert("Perfil salvo com sucesso!");
+      alert("Perfil atualizado com sucesso!");
     } catch (error: any) {
-      console.error("Erro detalhado ao salvar perfil:", error);
-      // Exibe a mensagem de erro real ou o objeto stringificado para diagnóstico
-      const errorMessage = error.message || error.details || JSON.stringify(error);
-      alert(`Erro ao salvar perfil: ${errorMessage}`);
+      console.error("Erro ao salvar perfil:", error);
+      
+      // Extração robusta da mensagem de erro
+      let displayError = "Erro desconhecido";
+      if (typeof error === 'string') displayError = error;
+      else if (error.message) displayError = error.message;
+      else if (error.details) displayError = error.details;
+      else displayError = JSON.stringify(error);
+      
+      alert(`Erro ao salvar perfil: ${displayError}`);
     } finally {
       setIsUpdating(false);
     }
@@ -664,6 +672,7 @@ const App: React.FC = () => {
                               <Cake size={24} className="text-red-600" />
                               <div className="text-left">
                                  <p className="text-[8px] text-zinc-600 font-black uppercase tracking-widest">Nascimento</p>
+                                 {/* Fix: use T12:00:00 to avoid timezone offset issues on display */}
                                  <p className="font-bold text-white uppercase italic">{new Date(user.birthDate + 'T12:00:00').toLocaleDateString('pt-BR')}</p>
                               </div>
                             </div>
