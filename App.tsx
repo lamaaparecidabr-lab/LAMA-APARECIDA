@@ -83,11 +83,13 @@ const App: React.FC = () => {
   useEffect(() => {
     let mounted = true;
 
+    // Fallback de segurança: Se em 6 segundos nada acontecer, destrava a UI
     const safetyTimer = setTimeout(() => {
       if (mounted && isLoading) {
+        console.warn("Auth initialization safety timeout triggered.");
         setIsLoading(false);
       }
-    }, 5000);
+    }, 6000);
 
     const checkInitialSession = async () => {
       try {
@@ -111,6 +113,7 @@ const App: React.FC = () => {
       if (!mounted) return;
 
       if (session?.user) {
+        // Se já houver um processo de sincronização em curso, syncUserData irá ignorar
         await syncUserData(session.user);
       } else {
         setIsAuthenticated(false);
@@ -132,15 +135,25 @@ const App: React.FC = () => {
   }, [isAuthenticated]);
 
   const syncUserData = async (authUser: any) => {
-    if (syncInProgress.current) return;
+    // Se já estiver sincronizando, não inicia outro mas garante que o loading termine
+    if (syncInProgress.current) {
+      return;
+    }
     syncInProgress.current = true;
     
     try {
-      const { data: profile, error } = await supabase
+      // Timeout manual para a query do profile para evitar hang eterno
+      const profilePromise = supabase
         .from('profiles')
         .select('*')
         .eq('id', authUser.id)
         .maybeSingle();
+
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("Database timeout")), 5000)
+      );
+
+      const { data: profile } = await (Promise.race([profilePromise, timeoutPromise]) as any);
 
       const userData: User = {
         id: authUser.id,
@@ -162,6 +175,7 @@ const App: React.FC = () => {
       setIsAuthenticated(true);
     } catch (err) {
       console.error("Erro ao sincronizar perfil:", err);
+      // Fallback para permitir entrada com dados mínimos do auth se o profile falhar
       setIsAuthenticated(true);
     } finally {
       setIsLoading(false);
@@ -170,29 +184,30 @@ const App: React.FC = () => {
   };
 
   const fetchRoutes = async () => {
-    const { data, error } = await supabase
-      .from('routes')
-      .select('*')
-      .order('created_at', { ascending: false });
-    
-    if (error) {
-      console.error("Erro ao buscar rotas:", error);
-      return;
-    }
+    try {
+      const { data, error } = await supabase
+        .from('routes')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
 
-    if (data) {
-      setRoutes(data.map((r: any) => ({
-        id: r.id,
-        user_id: r.user_id,
-        title: r.title,
-        description: r.description,
-        distance: r.distance,
-        difficulty: r.difficulty,
-        points: r.points,
-        status: r.status,
-        thumbnail: r.thumbnail,
-        isOfficial: r.is_official
-      })));
+      if (data) {
+        setRoutes(data.map((r: any) => ({
+          id: r.id,
+          user_id: r.user_id,
+          title: r.title,
+          description: r.description,
+          distance: r.distance,
+          difficulty: r.difficulty,
+          points: r.points,
+          status: r.status,
+          thumbnail: r.thumbnail,
+          isOfficial: r.is_official
+        })));
+      }
+    } catch (err) {
+      console.error("Erro ao buscar rotas:", err);
     }
   };
 
@@ -205,7 +220,9 @@ const App: React.FC = () => {
         alert("Acesso negado: " + error.message);
         setIsLoading(false);
       }
-    } catch (err) {
+      // Sucesso no login disparará onAuthStateChange -> syncUserData -> setIsLoading(false)
+    } catch (err: any) {
+      alert("Erro inesperado no login.");
       setIsLoading(false);
     }
   };
