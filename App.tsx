@@ -83,28 +83,14 @@ const App: React.FC = () => {
   useEffect(() => {
     let mounted = true;
 
-    const init = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user && mounted) {
-          await syncUserData(session.user);
-        } else if (mounted) {
-          setIsLoading(false);
-        }
-      } catch (err) {
-        console.error("Auth init error:", err);
-        if (mounted) setIsLoading(false);
-      }
-    };
-
-    init();
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
 
-      if (event === 'SIGNED_IN' && session?.user) {
+      if (session?.user) {
+        // Trata INITIAL_SESSION, SIGNED_IN, etc.
         await syncUserData(session.user);
-      } else if (event === 'SIGNED_OUT') {
+      } else {
+        // Se não houver sessão (SIGNED_OUT ou INITIAL_SESSION sem usuário)
         setIsAuthenticated(false);
         setUser(null);
         setRoutes([]);
@@ -153,7 +139,7 @@ const App: React.FC = () => {
       setIsAuthenticated(true);
     } catch (err) {
       console.error("Erro ao sincronizar perfil:", err);
-      // Mesmo com erro no perfil, mantemos autenticado se o authUser existir
+      // Fallback: mantém autenticado mesmo se falhar a busca do perfil
       setIsAuthenticated(true);
     } finally {
       setIsLoading(false);
@@ -304,7 +290,7 @@ const App: React.FC = () => {
     setIsLoading(true);
     try {
       await supabase.auth.signOut();
-      // Limpeza forçada redundante para garantir reatividade
+      // Limpeza forçada redundante
       setIsAuthenticated(false);
       setUser(null);
       setRoutes([]);
