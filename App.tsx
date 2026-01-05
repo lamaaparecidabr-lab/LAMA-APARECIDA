@@ -237,7 +237,7 @@ const App: React.FC = () => {
           const canvas = document.createElement('canvas');
           let width = img.width;
           let height = img.height;
-          const maxDim = 320; 
+          const maxDim = 256; // Reduzi ainda mais para garantir estabilidade
           if (width > height) {
             if (width > maxDim) {
               height *= maxDim / width;
@@ -253,7 +253,7 @@ const App: React.FC = () => {
           canvas.height = height;
           const ctx = canvas.getContext('2d');
           ctx?.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL('image/jpeg', 0.6));
+          resolve(canvas.toDataURL('image/jpeg', 0.5)); // Qualidade 0.5
         };
         img.src = e.target?.result as string;
       };
@@ -275,12 +275,12 @@ const App: React.FC = () => {
     setIsUpdating(true);
 
     try {
-      // Ajuste crucial: se a data de nascimento estiver vazia, enviamos null para o Postgres não reclamar
+      // 1. Tratamento da data para evitar erro de sintaxe do Postgres
       const formattedBirthDate = editForm.birthDate && editForm.birthDate.trim() !== "" 
         ? editForm.birthDate 
         : null;
 
-      // 1. Atualiza na tabela 'profiles' primeiro. 
+      // 2. Upsert na tabela Profiles
       const { error: dbError } = await supabase
         .from('profiles')
         .upsert({
@@ -289,14 +289,14 @@ const App: React.FC = () => {
           bike_model: editForm.bikeModel,
           avatar_url: editForm.avatar,
           birth_date: formattedBirthDate,
-          updated_at: new Date()
+          updated_at: new Date().toISOString()
         }, {
           onConflict: 'id'
         });
 
       if (dbError) throw dbError;
 
-      // 2. Atualiza os dados básicos no Auth.
+      // 3. Atualiza os dados básicos no Auth (Metadados leves)
       const { error: authError } = await supabase.auth.updateUser({
         data: {
           name: editForm.name,
@@ -304,13 +304,23 @@ const App: React.FC = () => {
         }
       });
 
-      // 3. Atualiza estado local e fecha edição
+      if (authError) throw authError;
+
+      // 4. Atualiza estado local e fecha edição
       setIsEditingProfile(false);
-      setUser({ ...user, ...editForm, birthDate: formattedBirthDate || "" });
+      setUser({ 
+        ...user, 
+        name: editForm.name, 
+        bikeModel: editForm.bikeModel, 
+        avatar: editForm.avatar, 
+        birthDate: formattedBirthDate || "" 
+      });
       alert("Perfil salvo com sucesso!");
     } catch (error: any) {
       console.error("Erro detalhado ao salvar perfil:", error);
-      alert(`Erro ao salvar: ${error.message || "Verifique o script SQL ou tente uma foto menor."}`);
+      // Exibe a mensagem de erro real ou o objeto stringificado para diagnóstico
+      const errorMessage = error.message || error.details || JSON.stringify(error);
+      alert(`Erro ao salvar perfil: ${errorMessage}`);
     } finally {
       setIsUpdating(false);
     }
@@ -654,7 +664,7 @@ const App: React.FC = () => {
                               <Cake size={24} className="text-red-600" />
                               <div className="text-left">
                                  <p className="text-[8px] text-zinc-600 font-black uppercase tracking-widest">Nascimento</p>
-                                 <p className="font-bold text-white uppercase italic">{new Date(user.birthDate).toLocaleDateString('pt-BR')}</p>
+                                 <p className="font-bold text-white uppercase italic">{new Date(user.birthDate + 'T12:00:00').toLocaleDateString('pt-BR')}</p>
                               </div>
                             </div>
                           )}
