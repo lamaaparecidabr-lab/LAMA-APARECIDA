@@ -10,7 +10,6 @@ import { supabase } from './services/supabaseClient';
 
 const LAMA_LOGO_URL = 'https://github.com/lamaaparecidabr-lab/LAMA-APARECIDA/blob/main/components/logo.jpg?raw=true';
 const YOUTUBE_ID = '-VzuMRXCizo';
-// Coordenadas exatas do L.A.M.A. Aparecida Casa Club
 const CLUBHOUSE_COORDS = { lat: -16.7908906, lng: -49.2311547 };
 const CLUBHOUSE_ADDRESS = "R. X-011 - Sítios Santa Luzia, Aparecida de Goiânia - GO, 74922-570";
 const CLUBHOUSE_MARK_NAME = "L.A.M.A. Aparecida Casa Club - Motorcycle Association";
@@ -75,12 +74,12 @@ const App: React.FC = () => {
   
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
   const [editForm, setEditForm] = useState({ name: '', bikeModel: '', avatar: '', birthDate: '' });
-  const [insights, setInsights] = useState<any>(null);
   const [isMuted, setIsMuted] = useState(true);
   const videoRef = useRef<HTMLIFrameElement>(null);
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Monitor de Autenticação em Tempo Real
   useEffect(() => {
     const init = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -90,7 +89,20 @@ const App: React.FC = () => {
         setIsLoading(false);
       }
     };
+
     init();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        await syncUserData(session.user);
+      } else if (event === 'SIGNED_OUT') {
+        setIsAuthenticated(false);
+        setUser(null);
+        setRoutes([]);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -99,11 +111,13 @@ const App: React.FC = () => {
 
   const syncUserData = async (authUser: any) => {
     try {
-      const { data: profile } = await supabase
+      const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', authUser.id)
         .maybeSingle();
+
+      if (error) throw error;
 
       const userData: User = {
         id: authUser.id,
@@ -123,26 +137,48 @@ const App: React.FC = () => {
         birthDate: userData.birthDate || ''
       });
       setIsAuthenticated(true);
+    } catch (err) {
+      console.error("Erro ao sincronizar perfil:", err);
     } finally {
       setIsLoading(false);
     }
   };
 
   const fetchRoutes = async () => {
-    const { data } = await supabase.from('routes').select().order('created_at', { ascending: false });
-    if (data) setRoutes(data.map((r: any) => ({ ...r, isOfficial: r.is_official })));
+    const { data, error } = await supabase
+      .from('routes')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error("Erro ao buscar rotas:", error);
+      return;
+    }
+
+    if (data) {
+      setRoutes(data.map((r: any) => ({
+        id: r.id,
+        user_id: r.user_id,
+        title: r.title,
+        description: r.description,
+        distance: r.distance,
+        difficulty: r.difficulty,
+        points: r.points,
+        status: r.status,
+        thumbnail: r.thumbnail,
+        isOfficial: r.is_official
+      })));
+    }
   };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    const { data, error } = await supabase.auth.signInWithPassword(loginForm);
+    const { error } = await supabase.auth.signInWithPassword(loginForm);
 
     if (error) {
       alert("Acesso negado: " + error.message);
       setIsLoading(false);
-    } else if (data?.session?.user) {
-      await syncUserData(data.session.user);
     }
   };
 
@@ -152,7 +188,7 @@ const App: React.FC = () => {
     setIsUpdating(true);
 
     try {
-      await supabase.from('profiles').upsert({
+      const { error } = await supabase.from('profiles').upsert({
         id: user.id,
         name: editForm.name,
         bike_model: editForm.bikeModel,
@@ -161,9 +197,34 @@ const App: React.FC = () => {
         updated_at: new Date().toISOString()
       });
 
+      if (error) throw error;
+
       setUser({ ...user, ...editForm });
       setIsEditingProfile(false);
-      alert("Perfil atualizado!");
+      alert("Perfil atualizado com sucesso!");
+    } catch (err: any) {
+      alert("Erro ao atualizar perfil: " + err.message);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handlePasswordChange = async () => {
+    const newPassword = window.prompt("Digite sua nova senha (mínimo 6 caracteres):");
+    if (newPassword === null) return;
+    
+    if (newPassword.length < 6) {
+      alert("A senha deve conter pelo menos 6 caracteres.");
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      alert("Senha alterada com sucesso!");
+    } catch (err: any) {
+      alert("Erro ao alterar senha: " + err.message);
     } finally {
       setIsUpdating(false);
     }
@@ -172,6 +233,10 @@ const App: React.FC = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        alert("A imagem deve ter no máximo 2MB.");
+        return;
+      }
       const reader = new FileReader();
       reader.onloadend = () => {
         setEditForm(prev => ({ ...prev, avatar: reader.result as string }));
@@ -181,19 +246,32 @@ const App: React.FC = () => {
   };
 
   const handleSaveRoute = async (newRoute: Route) => {
-    await supabase.from('routes').insert([{
-      ...newRoute,
-      is_official: user?.role === 'admin',
-      user_id: user?.id
+    if (!user) return;
+    
+    const { error } = await supabase.from('routes').insert([{
+      id: newRoute.id,
+      user_id: user.id,
+      title: newRoute.title,
+      description: newRoute.description,
+      distance: newRoute.distance,
+      difficulty: newRoute.difficulty,
+      points: newRoute.points,
+      status: newRoute.status,
+      thumbnail: newRoute.thumbnail,
+      is_official: user.role === 'admin'
     }]);
-    fetchRoutes();
+
+    if (error) {
+      alert("Erro ao salvar missão no banco: " + error.message);
+    } else {
+      fetchRoutes();
+    }
   };
 
   const fetchInsights = async (route: Route) => {
     setIsUpdating(true);
     try {
       const data = await getRouteInsights(route.title, "Aparecida de Goiânia, GO");
-      setInsights(data);
       alert(`🛡️ DICAS L.A.M.A. PARA: ${route.title}\n\n${data.safetyTips.map((t: string) => `• ${t}`).join('\n')}\n\n🌅 DESTAQUE PAISAGÍSTICO: ${data.scenicHighlight}`);
     } catch (error) {
       console.error("Erro ao obter insights via Gemini:", error);
@@ -205,22 +283,18 @@ const App: React.FC = () => {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    setIsAuthenticated(false);
-    setUser(null);
     setView('home');
   };
 
   const toggleMute = () => {
     if (videoRef.current?.contentWindow) {
       const command = isMuted ? 'unMute' : 'mute';
-      // Envia apenas o comando de mutar/desmutar
       videoRef.current.contentWindow.postMessage(JSON.stringify({ 
         event: 'command', 
         func: command, 
         args: [] 
       }), '*');
       
-      // Garante que o volume esteja no máximo ao desmutar sem forçar playVideo
       if (isMuted) {
         videoRef.current.contentWindow.postMessage(JSON.stringify({ 
           event: 'command', 
@@ -228,7 +302,6 @@ const App: React.FC = () => {
           args: [100] 
         }), '*');
       }
-
       setIsMuted(!isMuted);
     }
   };
@@ -264,7 +337,7 @@ const App: React.FC = () => {
   if (isLoading) return (
     <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-6">
       <Loader2 className="text-yellow-500 animate-spin" size={48} />
-      <p className="text-yellow-500 font-oswald font-black uppercase tracking-widest animate-pulse italic">Iniciando Sistemas...</p>
+      <p className="text-yellow-500 font-oswald font-black uppercase tracking-widest animate-pulse italic">Sincronizando com a Sede...</p>
     </div>
   );
 
@@ -341,7 +414,6 @@ const App: React.FC = () => {
                 </header>
 
                 <div className="relative group">
-                  {/* Glow Background */}
                   <div className="absolute -inset-4 bg-yellow-500/10 blur-[60px] rounded-[4rem] group-hover:bg-yellow-500/15 transition-all duration-1000"></div>
                   
                   <div className="relative bg-zinc-950 p-10 md:p-16 rounded-[3rem] md:rounded-[4rem] border border-zinc-900 overflow-hidden shadow-3xl">
@@ -397,7 +469,6 @@ const App: React.FC = () => {
                       </form>
                     ) : (
                       <div className="flex flex-col md:flex-row items-center md:items-start gap-10 md:gap-16 relative z-10">
-                        {/* Avatar Section */}
                         <div className="relative shrink-0">
                           <div className="absolute -inset-2 bg-gradient-to-tr from-yellow-500 to-red-600 rounded-[2.5rem] blur-sm opacity-50"></div>
                           <img 
@@ -410,7 +481,6 @@ const App: React.FC = () => {
                           </div>
                         </div>
 
-                        {/* Info Section */}
                         <div className="flex-1 text-center md:text-left space-y-8">
                           <div>
                             <div className="flex flex-wrap justify-center md:justify-start gap-3 mb-4">
@@ -447,7 +517,7 @@ const App: React.FC = () => {
 
                           <div className="pt-4 flex flex-col sm:flex-row gap-4">
                              <button onClick={() => setIsEditingProfile(true)} className="flex-1 bg-white text-black py-4 rounded-2xl font-black uppercase text-[10px] tracking-[0.3em] hover:bg-yellow-500 transition-all shadow-xl">Editar Perfil</button>
-                             <button className="flex-1 bg-zinc-900 border border-zinc-800 text-zinc-400 py-4 rounded-2xl font-black uppercase text-[10px] tracking-[0.3em] hover:text-white transition-all">Alterar Senha</button>
+                             <button onClick={handlePasswordChange} className="flex-1 bg-zinc-900 border border-zinc-800 text-zinc-400 py-4 rounded-2xl font-black uppercase text-[10px] tracking-[0.3em] hover:text-white transition-all">Alterar Senha</button>
                           </div>
                         </div>
                       </div>
@@ -478,7 +548,7 @@ const App: React.FC = () => {
                       </div>
                     </div>
                   )) : (
-                    <div className="col-span-full py-32 text-center bg-zinc-900/10 rounded-[3rem] border border-dashed border-zinc-800 text-zinc-500 uppercase italic tracking-widest">Nenhuma missão registrada localmente.</div>
+                    <div className="col-span-full py-32 text-center bg-zinc-900/10 rounded-[3rem] border border-dashed border-zinc-800 text-zinc-500 uppercase italic tracking-widest">Iniciando exploração local...</div>
                   )}
                 </div>
               </div>
@@ -493,7 +563,6 @@ const App: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   {iconicRoutes.map(route => (
                     <div key={route.id} className="bg-zinc-900/50 rounded-[3rem] overflow-hidden border border-zinc-800 hover:border-yellow-500/30 transition-all group shadow-2xl flex flex-col relative">
-                      {/* Carimbo Oficial Melhorado */}
                       {route.isOfficial && (
                         <div className="absolute top-6 right-6 z-20 transform rotate-12 drop-shadow-2xl">
                           <div className="border-[5px] border-yellow-500 text-yellow-500 px-6 py-2 rounded-2xl font-oswald font-black uppercase text-[12px] tracking-[0.25em] shadow-[0_0_30px_rgba(0,0,0,0.8)] bg-black/95 ring-2 ring-yellow-500/40">
@@ -552,38 +621,38 @@ const App: React.FC = () => {
               </div>
             )}
 
-       {currentView === 'gallery' && (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 h-full">
-            <header>
-              <h2 className="text-4xl font-oswald font-bold uppercase text-white italic">Nossa <span className="text-yellow-500">Galeria</span></h2>
-              <p className="text-zinc-400 mt-2">Registros históricos e momentos de irmandade em Aparecida.</p>
-            </header>
+            {currentView === 'gallery' && (
+              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 h-full">
+                <header>
+                  <h2 className="text-4xl font-oswald font-bold uppercase text-white italic">Nossa <span className="text-yellow-500">Galeria</span></h2>
+                  <p className="text-zinc-400 mt-2">Registros históricos e momentos de irmandade em Aparecida.</p>
+                </header>
 
-            <div className="relative bg-zinc-900 rounded-[3rem] border border-zinc-800 overflow-hidden min-h-[500px] flex flex-col items-center justify-center p-12 text-center shadow-2xl">
-              <div className="absolute inset-0 opacity-10 grayscale">
-                <img src="https://images.unsplash.com/photo-1558981403-c5f91cbba527?q=80&w=2070&auto=format&fit=crop" alt="Background" className="w-full h-full object-cover" />
-              </div>
-              
-              <div className="relative z-10 space-y-8 max-w-xl">
-                <div className="bg-yellow-500/10 p-6 rounded-full w-fit mx-auto border border-yellow-500/20">
-                  <ImageIcon size={64} className="text-yellow-500" />
+                <div className="relative bg-zinc-900 rounded-[3rem] border border-zinc-800 overflow-hidden min-h-[500px] flex flex-col items-center justify-center p-12 text-center shadow-2xl">
+                  <div className="absolute inset-0 opacity-10 grayscale">
+                    <img src="https://images.unsplash.com/photo-1558981403-c5f91cbba527?q=80&w=2070&auto=format&fit=crop" alt="Background" className="w-full h-full object-cover" />
+                  </div>
+                  
+                  <div className="relative z-10 space-y-8 max-w-xl">
+                    <div className="bg-yellow-500/10 p-6 rounded-full w-fit mx-auto border border-yellow-500/20">
+                      <ImageIcon size={64} className="text-yellow-500" />
+                    </div>
+                    <h3 className="text-3xl font-oswald font-bold text-white uppercase italic">Explore Nossa História no <span className="text-blue-500">Facebook</span></h3>
+                    <p className="text-zinc-400 text-lg leading-relaxed">
+                      Mantemos nossa galeria oficial atualizada em nossa página do Facebook. Clique no botão abaixo para ver as fotos das nossas últimas rotas, eventos e encontros.
+                    </p>
+                    <a 
+                      href="https://www.facebook.com/lamaaparecidabr/photos" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-3 bg-yellow-500 hover:bg-yellow-600 text-black px-10 py-5 rounded-2xl font-bold text-lg transition-all transform hover:scale-105 shadow-xl shadow-yellow-500/20 uppercase tracking-widest"
+                    >
+                      ACESSAR GALERIA OFICIAL <ExternalLink size={20} />
+                    </a>
+                  </div>
                 </div>
-                <h3 className="text-3xl font-oswald font-bold text-white uppercase italic">Explore Nossa História no <span className="text-blue-500">Facebook</span></h3>
-                <p className="text-zinc-400 text-lg leading-relaxed">
-                  Mantemos nossa galeria oficial atualizada em nossa página do Facebook. Clique no botão abaixo para ver as fotos das nossas últimas rotas, eventos e encontros.
-                </p>
-                <a 
-                  href="https://www.facebook.com/lamaaparecidabr/photos" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-3 bg-yellow-500 hover:bg-yellow-600 text-black px-10 py-5 rounded-2xl font-bold text-lg transition-all transform hover:scale-105 shadow-xl shadow-yellow-500/20 uppercase tracking-widest"
-                >
-                  ACESSAR GALERIA OFICIAL <ExternalLink size={20} />
-                </a>
               </div>
-            </div>
-          </div>
-        )}
+            )}
           </div>
         )}
       </main>
