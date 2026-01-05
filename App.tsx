@@ -104,7 +104,7 @@ const App: React.FC = () => {
 
       if (event === 'SIGNED_IN' && session?.user) {
         await syncUserData(session.user);
-      } else if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+      } else if (event === 'SIGNED_OUT') {
         setIsAuthenticated(false);
         setUser(null);
         setRoutes([]);
@@ -153,7 +153,8 @@ const App: React.FC = () => {
       setIsAuthenticated(true);
     } catch (err) {
       console.error("Erro ao sincronizar perfil:", err);
-      setIsAuthenticated(false);
+      // Mesmo com erro no perfil, mantemos autenticado se o authUser existir
+      setIsAuthenticated(true);
     } finally {
       setIsLoading(false);
     }
@@ -189,10 +190,13 @@ const App: React.FC = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    const { error } = await supabase.auth.signInWithPassword(loginForm);
-
-    if (error) {
-      alert("Acesso negado: " + error.message);
+    try {
+      const { error } = await supabase.auth.signInWithPassword(loginForm);
+      if (error) {
+        alert("Acesso negado: " + error.message);
+        setIsLoading(false);
+      }
+    } catch (err) {
       setIsLoading(false);
     }
   };
@@ -298,15 +302,20 @@ const App: React.FC = () => {
 
   const handleLogout = async () => {
     setIsLoading(true);
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error("Logout error:", error);
-      // Forçar limpeza mesmo com erro do SDK
+    try {
+      await supabase.auth.signOut();
+      // Limpeza forçada redundante para garantir reatividade
       setIsAuthenticated(false);
       setUser(null);
+      setRoutes([]);
+      setView('home');
+    } catch (error) {
+      console.error("Logout error:", error);
+      setIsAuthenticated(false);
+      setUser(null);
+    } finally {
+      setIsLoading(false);
     }
-    setView('home');
-    setIsLoading(false);
   };
 
   const toggleMute = () => {
