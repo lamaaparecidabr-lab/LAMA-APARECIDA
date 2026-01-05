@@ -78,6 +78,7 @@ const App: React.FC = () => {
   const videoRef = useRef<HTMLIFrameElement>(null);
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isSyncingRef = useRef(false);
 
   // Monitor de Autenticação Robusto
   useEffect(() => {
@@ -106,6 +107,7 @@ const App: React.FC = () => {
       if (session?.user) {
         await syncUserData(session.user);
       } else {
+        // Quando o evento é SIGNED_OUT ou a sessão é limpa
         setIsAuthenticated(false);
         setUser(null);
         setRoutes([]);
@@ -125,6 +127,9 @@ const App: React.FC = () => {
   }, [isAuthenticated]);
 
   const syncUserData = async (authUser: any) => {
+    if (isSyncingRef.current) return;
+    isSyncingRef.current = true;
+    
     try {
       const { data: profile, error } = await supabase
         .from('profiles')
@@ -154,11 +159,11 @@ const App: React.FC = () => {
       setIsAuthenticated(true);
     } catch (err) {
       console.error("Erro ao sincronizar perfil:", err);
-      // Fallback: mesmo com erro, se temos authUser, permitimos entrar
-      setIsAuthenticated(true);
+      // Fallback para manter acesso se a autenticação básica existe
+      if (authUser) setIsAuthenticated(true);
     } finally {
-      // Garantimos que o loading encerre SEMPRE aqui
       setIsLoading(false);
+      isSyncingRef.current = false;
     }
   };
 
@@ -303,18 +308,17 @@ const App: React.FC = () => {
   };
 
   const handleLogout = async () => {
-    setIsLoading(true);
+    // Não ativamos setIsLoading(true) aqui para evitar travamento na tela de radar se o signOut demorar
     try {
       await supabase.auth.signOut();
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
+      // Forçamos o reset dos estados locais independentemente da resposta da rede
       setIsAuthenticated(false);
       setUser(null);
       setRoutes([]);
       setView('home');
-    } catch (error) {
-      console.error("Logout error:", error);
-      setIsAuthenticated(false);
-      setUser(null);
-    } finally {
       setIsLoading(false);
     }
   };
