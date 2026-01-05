@@ -154,8 +154,10 @@ const App: React.FC = () => {
       setIsAuthenticated(true);
     } catch (err) {
       console.error("Erro ao sincronizar perfil:", err);
+      // Fallback: mesmo com erro, se temos authUser, permitimos entrar
       setIsAuthenticated(true);
     } finally {
+      // Garantimos que o loading encerre SEMPRE aqui
       setIsLoading(false);
     }
   };
@@ -418,11 +420,11 @@ const App: React.FC = () => {
                       rel="noopener noreferrer"
                       className="flex items-center gap-3 bg-[#25D366]/10 hover:bg-[#25D366]/20 border border-[#25D366]/20 px-4 py-2 rounded-xl transition-all group"
                     >
-                      <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest leading-tight">
+                      <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest leading-tight text-right">
                         venha fazer parte do grupo de amigos <br className="hidden sm:block"/> do LAMA Aparecida
                       </span>
-                      <div className="bg-[#25D366] p-2 rounded-lg text-black group-hover:scale-110 transition-transform">
-                        <MessageCircle size={18} fill="currentColor" />
+                      <div className="bg-[#25D366] p-2 rounded-lg text-black group-hover:scale-110 transition-transform shadow-lg shadow-[#25D366]/20">
+                        <MessageCircle size={20} fill="currentColor" />
                       </div>
                     </a>
                   </div>
@@ -677,7 +679,7 @@ const App: React.FC = () => {
 
                 <div className="relative bg-zinc-900 rounded-[3rem] border border-zinc-800 overflow-hidden min-h-[500px] flex flex-col items-center justify-center p-12 text-center shadow-2xl">
                   <div className="absolute inset-0 opacity-10 grayscale">
-                    <img src="https://images.unsplash.com/photo-1558981403-c5f91cbba527?q=80&w=2070&auto=format&fit=crop" alt="Background" className="w-full h-full object-cover" />
+                    <img src="https://images.unsplash.com/photo-1558981403-c5f91cbba527?q=80&w=2070&auto=format&fit=crop" alt="" className="w-full h-full object-cover" />
                   </div>
                   
                   <div className="relative z-10 space-y-8 max-w-xl">
