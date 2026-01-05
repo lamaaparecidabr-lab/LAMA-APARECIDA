@@ -275,6 +275,8 @@ const App: React.FC = () => {
     setIsUpdating(true);
 
     try {
+      // 1. Atualiza na tabela 'profiles' primeiro. 
+      // Upsert garante que o registro seja criado se não existir.
       const { error: dbError } = await supabase
         .from('profiles')
         .upsert({
@@ -288,6 +290,8 @@ const App: React.FC = () => {
 
       if (dbError) throw dbError;
 
+      // 2. Atualiza os dados básicos no Auth.
+      // IMPORTANTE: NÃO enviamos a imagem aqui para evitar o limite de 32KB do Auth Metadata.
       const { error: authError } = await supabase.auth.updateUser({
         data: {
           name: editForm.name,
@@ -295,12 +299,13 @@ const App: React.FC = () => {
         }
       });
 
+      // 3. Atualiza estado local e fecha edição
       setIsEditingProfile(false);
       setUser({ ...user, ...editForm });
       alert("Perfil salvo com sucesso!");
     } catch (error: any) {
-      console.error("Erro ao salvar perfil:", error);
-      alert("Erro ao salvar perfil. Tente uma imagem de perfil menor ou outra foto.");
+      console.error("Erro detalhado ao salvar perfil:", error);
+      alert("Erro ao salvar perfil. Verifique se executou o script SQL no Supabase ou tente uma foto menor.");
     } finally {
       setIsUpdating(false);
     }
