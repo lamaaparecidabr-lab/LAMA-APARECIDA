@@ -423,7 +423,7 @@ const App: React.FC = () => {
                       <div>
                         <span className="text-yellow-500 font-black uppercase tracking-widest text-xs md:text-lg">LATIN AMERICAN MOTORCYCLE ASSOCIATION</span>
                         <h1 className="text-3xl md:text-5xl font-oswald font-black text-white uppercase italic mt-2">Capítulo <span className="text-yellow-500">Aparecida</span></h1>
-                        <p className="text-[10px] italic text-zinc-600 uppercase tracking-widest mt-1">Est. 10/2022</p>
+                        <p className="text-[10px] font-bold italic text-zinc-600 uppercase tracking-widest mt-1">Est. 10/2022</p>
                       </div>
                     </div>
                   </header>
@@ -495,19 +495,19 @@ const App: React.FC = () => {
                         <form onSubmit={handleUpdateProfile} className="space-y-8 relative z-10">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             <div className="space-y-2">
-                              <label className="text-[9px] font-black uppercase tracking-widest text-zinc-600 ml-4">Nome de Estrada</label>
+                              <label className="text-[9px] font-bold uppercase tracking-widest text-zinc-600 ml-4">Nome de Estrada</label>
                               <input type="text" required className="w-full bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-2xl outline-none focus:border-yellow-500/50" value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} />
                             </div>
                             <div className="space-y-2">
-                              <label className="text-[9px] font-black uppercase tracking-widest text-zinc-600 ml-4">Moto Principal</label>
+                              <label className="text-[9px] font-bold uppercase tracking-widest text-zinc-600 ml-4">Moto Principal</label>
                               <input type="text" className="w-full bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-2xl outline-none focus:border-yellow-500/50" value={editForm.bikeModel} onChange={e => setEditForm({...editForm, bikeModel: e.target.value})} />
                             </div>
                             <div className="space-y-2">
-                              <label className="text-[9px] font-black uppercase tracking-widest text-zinc-600 ml-4">Data de Nascimento</label>
+                              <label className="text-[9px] font-bold uppercase tracking-widest text-zinc-600 ml-4">Data de Nascimento</label>
                               <input type="date" className="w-full bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-2xl outline-none focus:border-yellow-500/50" value={editForm.birthDate} onChange={e => setEditForm({...editForm, birthDate: e.target.value})} />
                             </div>
                             <div className="space-y-2">
-                              <label className="text-[9px] font-black uppercase tracking-widest text-zinc-600 ml-4">Foto de Perfil (.JPG / .PNG)</label>
+                              <label className="text-[9px] font-bold uppercase tracking-widest text-zinc-600 ml-4">Foto de Perfil (.JPG / .PNG)</label>
                               <div className="flex gap-4">
                                 <input 
                                   type="file" 
