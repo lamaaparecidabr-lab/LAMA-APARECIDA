@@ -78,56 +78,52 @@ const App: React.FC = () => {
   const videoRef = useRef<HTMLIFrameElement>(null);
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const isSyncingRef = useRef(false);
+  const syncInProgress = useRef(false);
 
-  // Monitor de Autenticação Robusto com Fallback de Segurança
   useEffect(() => {
     let mounted = true;
 
-    // Timer de Segurança: Se em 4 segundos o Supabase não responder, libera a tela de qualquer forma
-    const safetyTimeout = setTimeout(() => {
+    // Fallback de segurança: Destrava o app após 5 segundos independente do que aconteça
+    const safetyTimer = setTimeout(() => {
       if (mounted && isLoading) {
-        console.warn("Auth initialization safety timeout triggered.");
         setIsLoading(false);
       }
-    }, 4000);
+    }, 5000);
 
-    const initSession = async () => {
+    const checkInitialSession = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user && mounted) {
-          await syncUserData(session.user);
-        } else if (mounted) {
-          setIsLoading(false);
+        if (mounted) {
+          if (session?.user) {
+            await syncUserData(session.user);
+          } else {
+            setIsLoading(false);
+          }
         }
-      } catch (error) {
-        console.error("Erro ao inicializar sessão:", error);
+      } catch (err) {
+        console.error("Auth init error:", err);
         if (mounted) setIsLoading(false);
       }
     };
 
-    initSession();
+    checkInitialSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
 
       if (session?.user) {
-        // Se já estamos sincronizando pelo initSession, não fazemos nada aqui para evitar duplicidade
-        if (!isSyncingRef.current) {
-          await syncUserData(session.user);
-        }
+        await syncUserData(session.user);
       } else {
         setIsAuthenticated(false);
         setUser(null);
         setRoutes([]);
-        setLoginForm({ email: '', password: '' });
         setIsLoading(false);
       }
     });
 
     return () => {
       mounted = false;
-      clearTimeout(safetyTimeout);
+      clearTimeout(safetyTimer);
       subscription.unsubscribe();
     };
   }, []);
@@ -137,8 +133,8 @@ const App: React.FC = () => {
   }, [isAuthenticated]);
 
   const syncUserData = async (authUser: any) => {
-    if (isSyncingRef.current) return;
-    isSyncingRef.current = true;
+    if (syncInProgress.current) return;
+    syncInProgress.current = true;
     
     try {
       const { data: profile, error } = await supabase
@@ -146,8 +142,6 @@ const App: React.FC = () => {
         .select('*')
         .eq('id', authUser.id)
         .maybeSingle();
-
-      if (error) throw error;
 
       const userData: User = {
         id: authUser.id,
@@ -169,10 +163,11 @@ const App: React.FC = () => {
       setIsAuthenticated(true);
     } catch (err) {
       console.error("Erro ao sincronizar perfil:", err);
-      if (authUser) setIsAuthenticated(true);
+      // Fallback para permitir entrada mesmo com erro no perfil
+      setIsAuthenticated(true);
     } finally {
       setIsLoading(false);
-      isSyncingRef.current = false;
+      syncInProgress.current = false;
     }
   };
 
