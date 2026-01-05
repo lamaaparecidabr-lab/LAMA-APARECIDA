@@ -199,14 +199,23 @@ const App: React.FC = () => {
 
   const toggleMute = () => {
     if (videoRef.current?.contentWindow) {
+      const command = isMuted ? 'unMute' : 'mute';
+      // Envia apenas o comando de mutar/desmutar
+      videoRef.current.contentWindow.postMessage(JSON.stringify({ 
+        event: 'command', 
+        func: command, 
+        args: [] 
+      }), '*');
+      
+      // Garante que o volume esteja no máximo ao desmutar sem forçar playVideo
       if (isMuted) {
-        // Envia comando para desmutar e simultaneamente força a reprodução
-        // para contornar políticas de navegadores que pausem o vídeo ao desmutar
-        videoRef.current.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'unMute', args: [] }), '*');
-        videoRef.current.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*');
-      } else {
-        videoRef.current.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'mute', args: [] }), '*');
+        videoRef.current.contentWindow.postMessage(JSON.stringify({ 
+          event: 'command', 
+          func: 'setVolume', 
+          args: [100] 
+        }), '*');
       }
+
       setIsMuted(!isMuted);
     }
   };
