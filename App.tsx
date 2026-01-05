@@ -83,13 +83,11 @@ const App: React.FC = () => {
   useEffect(() => {
     let mounted = true;
 
-    // Fallback de segurança: Se em 6 segundos nada acontecer, destrava a UI
     const safetyTimer = setTimeout(() => {
       if (mounted && isLoading) {
-        console.warn("Auth initialization safety timeout triggered.");
         setIsLoading(false);
       }
-    }, 6000);
+    }, 8000);
 
     const checkInitialSession = async () => {
       try {
@@ -102,7 +100,6 @@ const App: React.FC = () => {
           }
         }
       } catch (err) {
-        console.error("Auth init error:", err);
         if (mounted) setIsLoading(false);
       }
     };
@@ -113,7 +110,6 @@ const App: React.FC = () => {
       if (!mounted) return;
 
       if (session?.user) {
-        // Se já houver um processo de sincronização em curso, syncUserData irá ignorar
         await syncUserData(session.user);
       } else {
         setIsAuthenticated(false);
@@ -135,14 +131,10 @@ const App: React.FC = () => {
   }, [isAuthenticated]);
 
   const syncUserData = async (authUser: any) => {
-    // Se já estiver sincronizando, não inicia outro mas garante que o loading termine
-    if (syncInProgress.current) {
-      return;
-    }
+    if (syncInProgress.current) return;
     syncInProgress.current = true;
     
     try {
-      // Timeout manual para a query do profile para evitar hang eterno
       const profilePromise = supabase
         .from('profiles')
         .select('*')
@@ -150,19 +142,25 @@ const App: React.FC = () => {
         .maybeSingle();
 
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error("Database timeout")), 5000)
+        setTimeout(() => reject(new Error("Conexão instável")), 15000)
       );
 
-      const { data: profile } = await (Promise.race([profilePromise, timeoutPromise]) as any);
+      let profileData = null;
+      try {
+        const result: any = await Promise.race([profilePromise, timeoutPromise]);
+        profileData = result?.data || null;
+      } catch (e) {
+        console.warn("Radar lento: usando dados básicos de autenticação.");
+      }
 
       const userData: User = {
         id: authUser.id,
-        name: profile?.name || authUser.user_metadata?.name || 'Membro L.A.M.A.',
+        name: profileData?.name || authUser.user_metadata?.name || 'Membro L.A.M.A.',
         email: authUser.email || '',
-        bikeModel: profile?.bike_model || 'Não informado',
-        avatar: profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${authUser.id}`,
-        birthDate: profile?.birth_date || '',
-        role: (profile?.role as 'admin' | 'member') || (authUser.email === ADMIN_EMAIL ? 'admin' : 'member')
+        bikeModel: profileData?.bike_model || 'Não informado',
+        avatar: profileData?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${authUser.id}`,
+        birthDate: profileData?.birth_date || '',
+        role: (profileData?.role as 'admin' | 'member') || (authUser.email === ADMIN_EMAIL ? 'admin' : 'member')
       };
       
       setUser(userData);
@@ -174,8 +172,6 @@ const App: React.FC = () => {
       });
       setIsAuthenticated(true);
     } catch (err) {
-      console.error("Erro ao sincronizar perfil:", err);
-      // Fallback para permitir entrada com dados mínimos do auth se o profile falhar
       setIsAuthenticated(true);
     } finally {
       setIsLoading(false);
@@ -220,7 +216,6 @@ const App: React.FC = () => {
         alert("Acesso negado: " + error.message);
         setIsLoading(false);
       }
-      // Sucesso no login disparará onAuthStateChange -> syncUserData -> setIsLoading(false)
     } catch (err: any) {
       alert("Erro inesperado no login.");
       setIsLoading(false);
@@ -504,7 +499,7 @@ const App: React.FC = () => {
                               <input type="text" required className="w-full bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-2xl outline-none focus:border-yellow-500/50" value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} />
                             </div>
                             <div className="space-y-2">
-                              <label className="text-[9px] font-black uppercase tracking-widest text-zinc-600 ml-4">Máquina Principal</label>
+                              <label className="text-[9px] font-black uppercase tracking-widest text-zinc-600 ml-4">Moto Principal</label>
                               <input type="text" className="w-full bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-2xl outline-none focus:border-yellow-500/50" value={editForm.bikeModel} onChange={e => setEditForm({...editForm, bikeModel: e.target.value})} />
                             </div>
                             <div className="space-y-2">
