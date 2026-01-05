@@ -80,11 +80,18 @@ const App: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isSyncingRef = useRef(false);
 
-  // Monitor de Autenticação Robusto
+  // Monitor de Autenticação Robusto com Fallback de Segurança
   useEffect(() => {
     let mounted = true;
 
-    // Função para verificar sessão inicial explicitamente e evitar loop infinito
+    // Timer de Segurança: Se em 4 segundos o Supabase não responder, libera a tela de qualquer forma
+    const safetyTimeout = setTimeout(() => {
+      if (mounted && isLoading) {
+        console.warn("Auth initialization safety timeout triggered.");
+        setIsLoading(false);
+      }
+    }, 4000);
+
     const initSession = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -105,9 +112,11 @@ const App: React.FC = () => {
       if (!mounted) return;
 
       if (session?.user) {
-        await syncUserData(session.user);
+        // Se já estamos sincronizando pelo initSession, não fazemos nada aqui para evitar duplicidade
+        if (!isSyncingRef.current) {
+          await syncUserData(session.user);
+        }
       } else {
-        // Quando o evento é SIGNED_OUT ou a sessão é limpa
         setIsAuthenticated(false);
         setUser(null);
         setRoutes([]);
@@ -118,6 +127,7 @@ const App: React.FC = () => {
 
     return () => {
       mounted = false;
+      clearTimeout(safetyTimeout);
       subscription.unsubscribe();
     };
   }, []);
@@ -159,7 +169,6 @@ const App: React.FC = () => {
       setIsAuthenticated(true);
     } catch (err) {
       console.error("Erro ao sincronizar perfil:", err);
-      // Fallback para manter acesso se a autenticação básica existe
       if (authUser) setIsAuthenticated(true);
     } finally {
       setIsLoading(false);
@@ -308,13 +317,11 @@ const App: React.FC = () => {
   };
 
   const handleLogout = async () => {
-    // Não ativamos setIsLoading(true) aqui para evitar travamento na tela de radar se o signOut demorar
     try {
       await supabase.auth.signOut();
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
-      // Forçamos o reset dos estados locais independentemente da resposta da rede
       setIsAuthenticated(false);
       setUser(null);
       setRoutes([]);
