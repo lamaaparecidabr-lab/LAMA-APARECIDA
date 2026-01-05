@@ -11,7 +11,7 @@ interface SidebarProps {
 }
 
 // URL direta do raw content do GitHub
-const LAMA_LOGO_URL = 'https://raw.githubusercontent.com/lamaaparecidabr-lab/LAMA-APARECIDA/main/components/logo.jpg';
+const LAMA_LOGO_URL = 'https://github.com/lamaaparecidabr-lab/LAMA-APARECIDA/blob/main/components/logo.jpg?raw=true';
 
 export const Sidebar: React.FC<SidebarProps> = ({ user, currentView, setView, onLogout }) => {
   const isAdmin = user?.role === 'admin' || user?.email === 'lama.aparecidabr@gmail.com';

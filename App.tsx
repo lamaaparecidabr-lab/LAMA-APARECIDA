@@ -8,7 +8,7 @@ import { Bike, Compass, Users, Calendar, Trophy, Image as ImageIcon, ExternalLin
 import { getRouteInsights } from './services/geminiService';
 import { supabase } from './services/supabaseClient';
 
-const LAMA_LOGO_URL = 'https://raw.githubusercontent.com/lamaaparecidabr-lab/LAMA-APARECIDA/main/components/logo.jpg';
+const LAMA_LOGO_URL = 'https://github.com/lamaaparecidabr-lab/LAMA-APARECIDA/blob/main/components/logo.jpg?raw=true';
 const YOUTUBE_ID = '-VzuMRXCizo';
 
 const CLUBHOUSE_COORDS = { lat: -16.7908906, lng: -49.2311547 };
