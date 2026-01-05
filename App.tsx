@@ -10,6 +10,7 @@ import { supabase } from './services/supabaseClient';
 
 const LAMA_LOGO_URL = 'https://github.com/lamaaparecidabr-lab/LAMA-APARECIDA/blob/main/components/logo.jpg?raw=true';
 const YOUTUBE_ID = '-VzuMRXCizo';
+// Coordenadas exatas do L.A.M.A. Aparecida Casa Club
 const CLUBHOUSE_COORDS = { lat: -16.7908906, lng: -49.2311547 };
 const CLUBHOUSE_ADDRESS = "R. X-011 - Sítios Santa Luzia, Aparecida de Goiânia - GO, 74922-570";
 const CLUBHOUSE_MARK_NAME = "L.A.M.A. Aparecida Casa Club - Motorcycle Association";
@@ -319,59 +320,106 @@ const App: React.FC = () => {
             )}
 
             {currentView === 'profile' && (
-              <div className="max-w-5xl mx-auto space-y-10">
-                <header className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-2 h-10 bg-yellow-500 rounded-full"></div>
-                    <h2 className="text-4xl font-oswald font-black text-white italic uppercase tracking-tighter">Área do <span className="text-yellow-500">Membro</span></h2>
-                  </div>
-                  <button onClick={() => setIsEditingProfile(!isEditingProfile)} className="px-6 py-3 bg-zinc-900 border border-zinc-800 rounded-xl text-[10px] font-black uppercase tracking-widest hover:text-yellow-500 transition-all">
-                    {isEditingProfile ? 'Cancelar' : 'Editar Perfil'}
-                  </button>
+              <div className="max-w-5xl mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-8 duration-700">
+                <header className="flex items-center gap-4">
+                  <div className="w-2 h-10 bg-yellow-500 rounded-full"></div>
+                  <h2 className="text-4xl font-oswald font-black text-white italic uppercase tracking-tighter">Área do <span className="text-yellow-500">Membro</span></h2>
                 </header>
 
-                <div className="relative bg-zinc-950 p-8 md:p-16 rounded-[3rem] border border-zinc-900 shadow-3xl overflow-hidden">
-                  {isEditingProfile ? (
-                    <form onSubmit={handleUpdateProfile} className="space-y-8">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div className="space-y-2">
-                          <label className="text-[9px] font-black uppercase tracking-widest text-zinc-600 ml-4">Nome de Estrada</label>
-                          <input type="text" required className="w-full bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-2xl outline-none focus:border-yellow-500/50" value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-[9px] font-black uppercase tracking-widest text-zinc-600 ml-4">Máquina Principal</label>
-                          <input type="text" className="w-full bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-2xl outline-none focus:border-yellow-500/50" value={editForm.bikeModel} onChange={e => setEditForm({...editForm, bikeModel: e.target.value})} />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-[9px] font-black uppercase tracking-widest text-zinc-600 ml-4">Data de Nascimento</label>
-                          <input type="date" className="w-full bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-2xl outline-none focus:border-yellow-500/50" value={editForm.birthDate} onChange={e => setEditForm({...editForm, birthDate: e.target.value})} />
-                        </div>
-                      </div>
-                      <button type="submit" disabled={isUpdating} className="w-full bg-yellow-500 text-black py-5 rounded-2xl font-black uppercase flex items-center justify-center gap-2">
-                         {isUpdating ? <Loader2 className="animate-spin" size={20} /> : <><Save size={20} /> Salvar Alterações</>}
-                      </button>
-                    </form>
-                  ) : (
-                    <div className="flex flex-col md:flex-row items-center gap-10 md:gap-16">
-                      <img src={user?.avatar} alt="Avatar" className="w-48 h-48 md:w-64 md:h-64 rounded-[2.5rem] object-cover border-4 border-zinc-900 shadow-2xl" />
-                      <div className="text-center md:text-left space-y-4 flex-1">
-                        <span className="inline-block px-3 py-1 bg-yellow-500/10 text-yellow-500 text-[10px] font-black uppercase rounded-lg">Membro L.A.M.A. Aparecida</span>
-                        <h2 className="text-4xl md:text-7xl font-oswald font-black text-white uppercase italic tracking-tighter leading-none mb-4">{user?.name}</h2>
-                        <div className="flex flex-wrap gap-4 justify-center md:justify-start pt-4">
-                          <div className="bg-zinc-900/50 p-6 rounded-2xl border border-zinc-900 min-w-[200px] flex-1">
-                            <Bike size={24} className="text-yellow-500 mb-2" />
-                            <p className="text-[8px] text-zinc-600 font-black uppercase tracking-widest">Máquina</p>
-                            <p className="font-bold text-white uppercase italic">{user?.bikeModel}</p>
-                          </div>
-                          <div className="bg-zinc-900/50 p-6 rounded-2xl border border-zinc-900 min-w-[200px] flex-1">
-                            <Cake size={24} className="text-pink-500 mb-2" />
-                            <p className="text-[8px] text-zinc-600 font-black uppercase tracking-widest">Aniversário</p>
-                            <p className="font-bold text-white uppercase italic">{formatDate(user?.birthDate)}</p>
-                          </div>
-                        </div>
-                      </div>
+                <div className="relative group">
+                  {/* Glow Background */}
+                  <div className="absolute -inset-4 bg-yellow-500/10 blur-[60px] rounded-[4rem] group-hover:bg-yellow-500/15 transition-all duration-1000"></div>
+                  
+                  <div className="relative bg-zinc-950 p-10 md:p-16 rounded-[3rem] md:rounded-[4rem] border border-zinc-900 overflow-hidden shadow-3xl">
+                    <div className="absolute top-0 right-0 p-12 opacity-[0.03] rotate-12 pointer-events-none">
+                      <Shield size={320} className="text-white" />
                     </div>
-                  )}
+
+                    {isEditingProfile ? (
+                      <form onSubmit={handleUpdateProfile} className="space-y-8 relative z-10">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                          <div className="space-y-2">
+                            <label className="text-[9px] font-black uppercase tracking-widest text-zinc-600 ml-4">Nome de Estrada</label>
+                            <input type="text" required className="w-full bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-2xl outline-none focus:border-yellow-500/50" value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-[9px] font-black uppercase tracking-widest text-zinc-600 ml-4">Máquina Principal</label>
+                            <input type="text" className="w-full bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-2xl outline-none focus:border-yellow-500/50" value={editForm.bikeModel} onChange={e => setEditForm({...editForm, bikeModel: e.target.value})} />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-[9px] font-black uppercase tracking-widest text-zinc-600 ml-4">Data de Nascimento</label>
+                            <input type="date" className="w-full bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-2xl outline-none focus:border-yellow-500/50" value={editForm.birthDate} onChange={e => setEditForm({...editForm, birthDate: e.target.value})} />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-[9px] font-black uppercase tracking-widest text-zinc-600 ml-4">URL do Avatar</label>
+                            <input type="text" className="w-full bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-2xl outline-none focus:border-yellow-500/50" value={editForm.avatar} onChange={e => setEditForm({...editForm, avatar: e.target.value})} />
+                          </div>
+                        </div>
+                        <div className="flex gap-4">
+                          <button type="submit" disabled={isUpdating} className="flex-1 bg-yellow-500 text-black py-5 rounded-2xl font-black uppercase flex items-center justify-center gap-2">
+                             {isUpdating ? <Loader2 className="animate-spin" size={20} /> : <><Save size={20} /> Salvar Alterações</>}
+                          </button>
+                          <button type="button" onClick={() => setIsEditingProfile(false)} className="flex-1 bg-zinc-900 border border-zinc-800 text-zinc-400 py-5 rounded-2xl font-black uppercase">Cancelar</button>
+                        </div>
+                      </form>
+                    ) : (
+                      <div className="flex flex-col md:flex-row items-center md:items-start gap-10 md:gap-16 relative z-10">
+                        {/* Avatar Section */}
+                        <div className="relative shrink-0">
+                          <div className="absolute -inset-2 bg-gradient-to-tr from-yellow-500 to-red-600 rounded-[2.5rem] blur-sm opacity-50"></div>
+                          <img 
+                            src={user?.avatar} 
+                            alt="Avatar" 
+                            className="relative w-48 h-48 md:w-64 md:h-64 rounded-[2.2rem] border-4 border-zinc-950 object-cover shadow-2xl" 
+                          />
+                          <div className="absolute -bottom-4 -right-4 bg-yellow-500 text-black p-3 rounded-2xl shadow-xl transform rotate-12">
+                            <Award size={24} strokeWidth={3} />
+                          </div>
+                        </div>
+
+                        {/* Info Section */}
+                        <div className="flex-1 text-center md:text-left space-y-8">
+                          <div>
+                            <div className="flex flex-wrap justify-center md:justify-start gap-3 mb-4">
+                              <span className="bg-yellow-500 text-black px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest">Membro Ativo</span>
+                              <span className="bg-zinc-800 text-zinc-400 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-zinc-700">Capítulo Aparecida</span>
+                            </div>
+                            <h2 className="text-5xl md:text-7xl lg:text-8xl font-oswald font-black text-white uppercase italic tracking-tighter leading-none mb-2">
+                              {user?.name}
+                            </h2>
+                            <p className="text-zinc-500 font-black uppercase tracking-[0.4em] text-[10px] md:text-xs italic">{user?.email}</p>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
+                            <div className="bg-zinc-900/60 border border-zinc-800/80 p-6 md:p-8 rounded-[2rem] flex items-center gap-6 hover:border-yellow-500/30 transition-all group/card">
+                              <div className="bg-yellow-500/10 p-4 rounded-2xl group-hover/card:bg-yellow-500/20 transition-all">
+                                <Bike size={32} className="text-yellow-500" />
+                              </div>
+                              <div className="flex flex-col text-left">
+                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 mb-1">Motocicleta</span>
+                                <span className="font-bold text-white text-lg md:text-xl tracking-tight">{user?.bikeModel}</span>
+                              </div>
+                            </div>
+
+                            <div className="bg-zinc-900/60 border border-zinc-800/80 p-6 md:p-8 rounded-[2rem] flex items-center gap-6 hover:border-pink-500/30 transition-all group/card">
+                              <div className="bg-pink-500/10 p-4 rounded-2xl group-hover/card:bg-pink-500/20 transition-all">
+                                <Cake size={32} className="text-pink-500" />
+                              </div>
+                              <div className="flex flex-col text-left">
+                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 mb-1">Aniversário</span>
+                                <span className="font-bold text-white text-lg md:text-xl tracking-tight italic">{formatDate(user?.birthDate)}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="pt-4 flex flex-col sm:flex-row gap-4">
+                             <button onClick={() => setIsEditingProfile(true)} className="flex-1 bg-white text-black py-4 rounded-2xl font-black uppercase text-[10px] tracking-[0.3em] hover:bg-yellow-500 transition-all shadow-xl">Editar Perfil</button>
+                             <button className="flex-1 bg-zinc-900 border border-zinc-800 text-zinc-400 py-4 rounded-2xl font-black uppercase text-[10px] tracking-[0.3em] hover:text-white transition-all">Alterar Senha</button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
@@ -453,6 +501,12 @@ const App: React.FC = () => {
                 </header>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
                   <div className="bg-zinc-950 p-8 md:p-12 rounded-[3rem] border border-zinc-900 flex flex-col justify-center space-y-8">
+                    <div className="flex flex-row items-center gap-4 mb-4">
+                      <div className="bg-yellow-500/10 p-2.5 rounded-2xl border border-yellow-500/20 shadow-[0_0_20px_rgba(234,179,8,0.1)]">
+                        <Award size={24} className="text-yellow-500" />
+                      </div>
+                      <h4 className="text-xl font-oswald font-black text-white uppercase italic tracking-widest leading-none">Sede Oficial <span className="text-yellow-500">L.A.M.A. Aparecida</span></h4>
+                    </div>
                     <h3 className="text-3xl font-oswald font-black text-white uppercase italic">Ponto de <span className="text-yellow-500">Encontro</span></h3>
                     <p className="text-zinc-400 text-lg leading-relaxed">{CLUBHOUSE_ADDRESS}</p>
                     <div className="flex flex-col sm:flex-row gap-4">
@@ -465,26 +519,38 @@ const App: React.FC = () => {
               </div>
             )}
 
-            {currentView === 'gallery' && (
-              <div className="space-y-12">
-                <header className="flex items-center gap-4">
-                  <div className="w-2 h-10 bg-yellow-500 rounded-full"></div>
-                  <h2 className="text-5xl font-oswald font-black text-white italic uppercase tracking-tighter">Nossa <span className="text-yellow-500">Galeria</span></h2>
-                </header>
-                <div className="relative bg-zinc-900 rounded-[4rem] border border-zinc-800 flex flex-col items-center justify-center p-16 text-center shadow-3xl min-h-[500px] overflow-hidden group">
-                  <div className="relative z-10 space-y-8 max-w-2xl">
-                    <div className="bg-yellow-500/20 p-8 rounded-full w-fit mx-auto border border-yellow-500/30 mb-6 shadow-[0_0_50px_rgba(234,179,8,0.2)]">
-                      <ImageIcon size={64} className="text-yellow-500" />
-                    </div>
-                    <h3 className="text-4xl font-oswald font-black text-white uppercase italic tracking-tighter">História em Cada Clique</h3>
-                    <p className="text-zinc-400 text-lg leading-relaxed font-medium">Nossa jornada está documentada em fotos e vídeos em nossa página oficial.</p>
-                    <a href="https://www.facebook.com/lamaaparecidabr/photos" target="_blank" className="inline-flex items-center gap-4 bg-yellow-500 text-black px-16 py-6 rounded-3xl font-black uppercase tracking-[0.2em] text-xs hover:bg-yellow-400 transition-all shadow-2xl">
-                      ACESSAR NO FACEBOOK <ExternalLink size={20}/>
-                    </a>
-                  </div>
-                </div>
+       {currentView === 'gallery' && (
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 h-full">
+            <header>
+              <h2 className="text-4xl font-oswald font-bold uppercase text-white italic">Nossa <span className="text-yellow-500">Galeria</span></h2>
+              <p className="text-zinc-400 mt-2">Registros históricos e momentos da irmandade em Aparecida.</p>
+            </header>
+
+            <div className="relative bg-zinc-900 rounded-[3rem] border border-zinc-800 overflow-hidden min-h-[500px] flex flex-col items-center justify-center p-12 text-center shadow-2xl">
+              <div className="absolute inset-0 opacity-10 grayscale">
+                <img src="https://images.unsplash.com/photo-1558981403-c5f91cbba527?q=80&w=2070&auto=format&fit=crop" alt="Background" className="w-full h-full object-cover" />
               </div>
-            )}
+              
+              <div className="relative z-10 space-y-8 max-w-xl">
+                <div className="bg-yellow-500/10 p-6 rounded-full w-fit mx-auto border border-yellow-500/20">
+                  <ImageIcon size={64} className="text-yellow-500" />
+                </div>
+                <h3 className="text-3xl font-oswald font-bold text-white uppercase italic">Explore Nossa História no <span className="text-blue-500">Facebook</span></h3>
+                <p className="text-zinc-400 text-lg leading-relaxed">
+                  Mantemos nossa galeria oficial atualizada em nossa página do Facebook. Clique no botão abaixo para ver as fotos das nossas últimas rotas, eventos e encontros.
+                </p>
+                <a 
+                  href="https://www.facebook.com/lamaaparecidabr/photos" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-3 bg-yellow-500 hover:bg-yellow-600 text-black px-10 py-5 rounded-2xl font-bold text-lg transition-all transform hover:scale-105 shadow-xl shadow-yellow-500/20 uppercase tracking-widest"
+                >
+                  ACESSAR GALERIA OFICIAL <ExternalLink size={20} />
+                </a>
+              </div>
+            </div>
+          </div>
+        )}
           </div>
         )}
       </main>
