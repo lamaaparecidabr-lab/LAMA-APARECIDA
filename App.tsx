@@ -79,30 +79,44 @@ const App: React.FC = () => {
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Monitor de Autenticação em Tempo Real
+  // Monitor de Autenticação Robusto
   useEffect(() => {
+    let mounted = true;
+
     const init = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        await syncUserData(session.user);
-      } else {
-        setIsLoading(false);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user && mounted) {
+          await syncUserData(session.user);
+        } else if (mounted) {
+          setIsLoading(false);
+        }
+      } catch (err) {
+        console.error("Auth init error:", err);
+        if (mounted) setIsLoading(false);
       }
     };
 
     init();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
+
       if (event === 'SIGNED_IN' && session?.user) {
         await syncUserData(session.user);
-      } else if (event === 'SIGNED_OUT') {
+      } else if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
         setIsAuthenticated(false);
         setUser(null);
         setRoutes([]);
+        setLoginForm({ email: '', password: '' });
+        setIsLoading(false);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -139,6 +153,7 @@ const App: React.FC = () => {
       setIsAuthenticated(true);
     } catch (err) {
       console.error("Erro ao sincronizar perfil:", err);
+      setIsAuthenticated(false);
     } finally {
       setIsLoading(false);
     }
@@ -282,8 +297,16 @@ const App: React.FC = () => {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    setIsLoading(true);
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error("Logout error:", error);
+      // Forçar limpeza mesmo com erro do SDK
+      setIsAuthenticated(false);
+      setUser(null);
+    }
     setView('home');
+    setIsLoading(false);
   };
 
   const toggleMute = () => {
@@ -337,7 +360,7 @@ const App: React.FC = () => {
   if (isLoading) return (
     <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-6">
       <Loader2 className="text-yellow-500 animate-spin" size={48} />
-      <p className="text-yellow-500 font-oswald font-black uppercase tracking-widest animate-pulse italic">Sincronizando com a Sede...</p>
+      <p className="text-yellow-500 font-oswald font-black uppercase tracking-widest animate-pulse italic">Sincronizando Radar...</p>
     </div>
   );
 
@@ -548,7 +571,7 @@ const App: React.FC = () => {
                       </div>
                     </div>
                   )) : (
-                    <div className="col-span-full py-32 text-center bg-zinc-900/10 rounded-[3rem] border border-dashed border-zinc-800 text-zinc-500 uppercase italic tracking-widest">Iniciando exploração local...</div>
+                    <div className="col-span-full py-32 text-center bg-zinc-900/10 rounded-[3rem] border border-dashed border-zinc-800 text-zinc-500 uppercase italic tracking-widest">Nenhuma missão no horizonte...</div>
                   )}
                 </div>
               </div>
