@@ -275,8 +275,12 @@ const App: React.FC = () => {
     setIsUpdating(true);
 
     try {
+      // Ajuste crucial: se a data de nascimento estiver vazia, enviamos null para o Postgres não reclamar
+      const formattedBirthDate = editForm.birthDate && editForm.birthDate.trim() !== "" 
+        ? editForm.birthDate 
+        : null;
+
       // 1. Atualiza na tabela 'profiles' primeiro. 
-      // Upsert garante que o registro seja criado se não existir.
       const { error: dbError } = await supabase
         .from('profiles')
         .upsert({
@@ -284,14 +288,15 @@ const App: React.FC = () => {
           name: editForm.name,
           bike_model: editForm.bikeModel,
           avatar_url: editForm.avatar,
-          birth_date: editForm.birthDate,
+          birth_date: formattedBirthDate,
           updated_at: new Date()
+        }, {
+          onConflict: 'id'
         });
 
       if (dbError) throw dbError;
 
       // 2. Atualiza os dados básicos no Auth.
-      // IMPORTANTE: NÃO enviamos a imagem aqui para evitar o limite de 32KB do Auth Metadata.
       const { error: authError } = await supabase.auth.updateUser({
         data: {
           name: editForm.name,
@@ -301,11 +306,11 @@ const App: React.FC = () => {
 
       // 3. Atualiza estado local e fecha edição
       setIsEditingProfile(false);
-      setUser({ ...user, ...editForm });
+      setUser({ ...user, ...editForm, birthDate: formattedBirthDate || "" });
       alert("Perfil salvo com sucesso!");
     } catch (error: any) {
       console.error("Erro detalhado ao salvar perfil:", error);
-      alert("Erro ao salvar perfil. Verifique se executou o script SQL no Supabase ou tente uma foto menor.");
+      alert(`Erro ao salvar: ${error.message || "Verifique o script SQL ou tente uma foto menor."}`);
     } finally {
       setIsUpdating(false);
     }
