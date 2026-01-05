@@ -68,6 +68,7 @@ const App: React.FC = () => {
   const [currentView, setView] = useState<View>('home');
   const [user, setUser] = useState<User | null>(null);
   const [routes, setRoutes] = useState<Route[]>([]);
+  const [allMembers, setAllMembers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -115,6 +116,7 @@ const App: React.FC = () => {
         setIsAuthenticated(false);
         setUser(null);
         setRoutes([]);
+        setAllMembers([]);
         setIsLoading(false);
       }
     });
@@ -127,7 +129,10 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (isAuthenticated) fetchRoutes();
+    if (isAuthenticated) {
+      fetchRoutes();
+      fetchMembers();
+    }
   }, [isAuthenticated]);
 
   const syncUserData = async (authUser: any) => {
@@ -176,6 +181,29 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
       syncInProgress.current = false;
+    }
+  };
+
+  const fetchMembers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, name, avatar_url, birth_date, bike_model')
+        .order('name', { ascending: true });
+      
+      if (error) throw error;
+      if (data) {
+        setAllMembers(data.map((m: any) => ({
+          id: m.id,
+          name: m.name,
+          avatar: m.avatar_url,
+          birthDate: m.birth_date,
+          bikeModel: m.bike_model,
+          email: '' // Não expomos email por privacidade
+        })));
+      }
+    } catch (err) {
+      console.error("Erro ao buscar membros:", err);
     }
   };
 
@@ -241,6 +269,7 @@ const App: React.FC = () => {
 
       setUser({ ...user, ...editForm });
       setIsEditingProfile(false);
+      fetchMembers(); // Atualiza lista de aniversariantes
       alert("Perfil atualizado com sucesso!");
     } catch (err: any) {
       alert("Erro ao atualizar perfil: " + err.message);
@@ -330,6 +359,7 @@ const App: React.FC = () => {
       setIsAuthenticated(false);
       setUser(null);
       setRoutes([]);
+      setAllMembers([]);
       setView('home');
       setIsLoading(false);
     }
@@ -382,6 +412,23 @@ const App: React.FC = () => {
     const [year, month, day] = dateString.split('-');
     return `${day}/${month}/${year}`;
   };
+
+  const getBirthdays = (targetMonthOffset: number) => {
+    const now = new Date();
+    const targetMonth = (now.getMonth() + targetMonthOffset) % 12;
+    
+    return allMembers.filter(m => {
+      if (!m.birthDate) return false;
+      const bDate = new Date(m.birthDate);
+      return bDate.getUTCMonth() === targetMonth;
+    }).sort((a, b) => {
+      const dayA = new Date(a.birthDate!).getUTCDate();
+      const dayB = new Date(b.birthDate!).getUTCDate();
+      return dayA - dayB;
+    });
+  };
+
+  const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 
   if (isLoading) return (
     <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-6">
@@ -600,11 +647,12 @@ const App: React.FC = () => {
               {currentView === 'tracking' && <RouteTracker onSave={handleSaveRoute} />}
               
               {currentView === 'my-routes' && (
-                <div className="space-y-12">
+                <div className="space-y-16">
                   <header className="flex items-center gap-4">
                     <div className="w-2 h-10 bg-red-600 rounded-full"></div>
                     <h2 className="text-4xl font-oswald font-black text-white italic uppercase tracking-tighter">Mural de <span className="text-yellow-500">Missões</span></h2>
                   </header>
+                  
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {routes.length > 0 ? routes.map(route => (
                       <div key={route.id} className="bg-zinc-950 rounded-[2.5rem] border border-zinc-900 overflow-hidden shadow-2xl group flex flex-col relative">
@@ -620,6 +668,59 @@ const App: React.FC = () => {
                     )) : (
                       <div className="col-span-full py-32 text-center bg-zinc-900/10 rounded-[3rem] border border-dashed border-zinc-800 text-zinc-500 uppercase italic tracking-widest">Nenhuma missão no horizonte...</div>
                     )}
+                  </div>
+
+                  {/* Birthdays Section */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
+                    {/* Birthdays This Month */}
+                    <div className="bg-zinc-950 rounded-[2.5rem] border border-zinc-900 overflow-hidden shadow-2xl flex flex-col">
+                      <div className="p-8 border-b border-zinc-900 flex items-center justify-between bg-zinc-900/20">
+                        <h3 className="text-2xl font-oswald font-black text-white uppercase italic tracking-tighter">
+                          Aniversariantes do Mês: <span className="text-yellow-500">{monthNames[new Date().getMonth()]}</span>
+                        </h3>
+                        <Cake className="text-yellow-500" size={24} />
+                      </div>
+                      <div className="p-8 space-y-4 max-h-[300px] overflow-y-auto custom-scrollbar">
+                        {getBirthdays(0).length > 0 ? (
+                          getBirthdays(0).map(member => (
+                            <div key={member.id} className="flex items-center justify-between group">
+                              <div className="flex items-center gap-4">
+                                <img src={member.avatar} className="w-10 h-10 rounded-full border border-zinc-800 object-cover" />
+                                <span className="font-bold text-white uppercase text-sm tracking-tight">{member.name}</span>
+                              </div>
+                              <span className="text-yellow-500 font-mono text-xs font-black">Dia {new Date(member.birthDate!).getUTCDate()}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-zinc-600 text-center italic py-4 uppercase text-[10px] tracking-widest">Sem aniversariantes neste mês</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Birthdays Next Month */}
+                    <div className="bg-zinc-950 rounded-[2.5rem] border border-zinc-900 overflow-hidden shadow-2xl flex flex-col">
+                      <div className="p-8 border-b border-zinc-900 flex items-center justify-between bg-zinc-900/20">
+                        <h3 className="text-2xl font-oswald font-black text-white uppercase italic tracking-tighter">
+                          Aniversariantes de: <span className="text-yellow-500">{monthNames[(new Date().getMonth() + 1) % 12]}</span>
+                        </h3>
+                        <Calendar className="text-zinc-600" size={24} />
+                      </div>
+                      <div className="p-8 space-y-4 max-h-[300px] overflow-y-auto custom-scrollbar">
+                        {getBirthdays(1).length > 0 ? (
+                          getBirthdays(1).map(member => (
+                            <div key={member.id} className="flex items-center justify-between group">
+                              <div className="flex items-center gap-4">
+                                <img src={member.avatar} className="w-10 h-10 rounded-full border border-zinc-800 object-cover" />
+                                <span className="font-bold text-white uppercase text-sm tracking-tight">{member.name}</span>
+                              </div>
+                              <span className="text-yellow-500 font-mono text-xs font-black">Dia {new Date(member.birthDate!).getUTCDate()}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-zinc-600 text-center italic py-4 uppercase text-[10px] tracking-widest">Sem aniversariantes no próximo mês</p>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
