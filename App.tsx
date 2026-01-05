@@ -199,8 +199,14 @@ const App: React.FC = () => {
 
   const toggleMute = () => {
     if (videoRef.current?.contentWindow) {
-      const command = isMuted ? 'unMute' : 'mute';
-      videoRef.current.contentWindow.postMessage(JSON.stringify({ event: 'command', func: command, args: [] }), '*');
+      if (isMuted) {
+        // Envia comando para desmutar e simultaneamente força a reprodução
+        // para contornar políticas de navegadores que pausem o vídeo ao desmutar
+        videoRef.current.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'unMute', args: [] }), '*');
+        videoRef.current.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*');
+      } else {
+        videoRef.current.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'mute', args: [] }), '*');
+      }
       setIsMuted(!isMuted);
     }
   };
@@ -283,7 +289,7 @@ const App: React.FC = () => {
                     <iframe 
                       ref={videoRef}
                       className="w-full h-full object-cover opacity-60 pointer-events-none"
-                      src={`https://www.youtube.com/embed/${YOUTUBE_ID}?autoplay=1&mute=1&loop=1&playlist=${YOUTUBE_ID}&controls=0&enablejsapi=1`} 
+                      src={`https://www.youtube.com/embed/${YOUTUBE_ID}?autoplay=1&mute=1&loop=1&playlist=${YOUTUBE_ID}&controls=0&enablejsapi=1&modestbranding=1&rel=0&iv_load_policy=3&origin=${window.location.origin}`} 
                       frameBorder="0"
                     ></iframe>
                   </div>
