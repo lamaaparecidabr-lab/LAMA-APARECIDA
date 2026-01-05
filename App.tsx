@@ -313,12 +313,17 @@ const App: React.FC = () => {
                       className="w-full h-full object-cover opacity-60 pointer-events-none"
                       src={`https://www.youtube.com/embed/${YOUTUBE_ID}?autoplay=1&mute=1&loop=1&playlist=${YOUTUBE_ID}&controls=0&enablejsapi=1&modestbranding=1&rel=0&iv_load_policy=3&origin=${window.location.origin}`} 
                       frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
                     ></iframe>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-1.5 md:flex md:flex-wrap md:gap-4 items-center justify-start">
+                  <div className="grid grid-cols-3 gap-1.5 md:flex md:flex-wrap md:gap-4 items-center justify-start">
                      <button onClick={() => setView('clubhouse')} className="bg-white text-black px-1 md:px-12 py-3 md:py-5 rounded-xl md:rounded-[1.8rem] font-black uppercase text-[7px] md:text-[11px] hover:bg-yellow-500 transition-all flex flex-col md:flex-row items-center justify-center gap-1 md:gap-3 shadow-xl">
                        VISITAR SEDE <MapPin size={12} />
+                     </button>
+                     <button onClick={toggleMute} className="bg-zinc-900/80 backdrop-blur-md text-white px-1 md:px-10 py-3 md:py-5 rounded-xl md:rounded-[1.8rem] font-black uppercase text-[7px] md:text-[11px] hover:bg-yellow-500 hover:text-black transition-all flex flex-col md:flex-row items-center justify-center gap-1 md:gap-3 shadow-xl">
+                       VOLUME {isMuted ? <VolumeX size={12} /> : <Volume2 size={12} />}
                      </button>
                      <button onClick={handleFullscreen} className="bg-zinc-900/80 backdrop-blur-md text-white px-1 md:px-10 py-3 md:py-5 rounded-xl md:rounded-[1.8rem] font-black uppercase text-[7px] md:text-[11px] hover:bg-yellow-500 hover:text-black transition-all flex flex-col md:flex-row items-center justify-center gap-1 md:gap-3 shadow-xl">
                        AMPLIAR VÍDEO <Maximize2 size={12} />
