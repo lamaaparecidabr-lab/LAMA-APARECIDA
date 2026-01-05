@@ -4,7 +4,7 @@ import { Sidebar } from './components/Sidebar';
 import { RouteTracker } from './components/RouteTracker';
 import { MapView } from './components/MapView';
 import { View, User, Route } from './types';
-import { Bike, Compass, Users, Calendar, Trophy, Image as ImageIcon, ExternalLink, Shield, Gauge, ChevronRight, Zap, Map, Volume2, VolumeX, Maximize2, MapPin, Navigation, Lock, Radio, Award, Star, Loader2, Edit2, Save, X, Camera, UserPlus, Key, Trash2, CheckCircle2, Cake, Upload } from 'lucide-react';
+import { Bike, Compass, Users, Calendar, Trophy, Image as ImageIcon, ExternalLink, Shield, Gauge, ChevronRight, Zap, Map, Volume2, VolumeX, Maximize2, MapPin, Navigation, Lock, Radio, Award, Star, Loader2, Edit2, Save, X, Camera, UserPlus, Key, Trash2, CheckCircle2, Cake, Upload, MessageCircle } from 'lucide-react';
 import { getRouteInsights } from './services/geminiService';
 import { supabase } from './services/supabaseClient';
 
@@ -83,14 +83,29 @@ const App: React.FC = () => {
   useEffect(() => {
     let mounted = true;
 
+    // Função para verificar sessão inicial explicitamente e evitar loop infinito
+    const initSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user && mounted) {
+          await syncUserData(session.user);
+        } else if (mounted) {
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.error("Erro ao inicializar sessão:", error);
+        if (mounted) setIsLoading(false);
+      }
+    };
+
+    initSession();
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
 
       if (session?.user) {
-        // Trata INITIAL_SESSION, SIGNED_IN, etc.
         await syncUserData(session.user);
       } else {
-        // Se não houver sessão (SIGNED_OUT ou INITIAL_SESSION sem usuário)
         setIsAuthenticated(false);
         setUser(null);
         setRoutes([]);
@@ -139,7 +154,6 @@ const App: React.FC = () => {
       setIsAuthenticated(true);
     } catch (err) {
       console.error("Erro ao sincronizar perfil:", err);
-      // Fallback: mantém autenticado mesmo se falhar a busca do perfil
       setIsAuthenticated(true);
     } finally {
       setIsLoading(false);
@@ -290,7 +304,6 @@ const App: React.FC = () => {
     setIsLoading(true);
     try {
       await supabase.auth.signOut();
-      // Limpeza forçada redundante
       setIsAuthenticated(false);
       setUser(null);
       setRoutes([]);
@@ -393,9 +406,25 @@ const App: React.FC = () => {
                 </header>
 
                 <div className="space-y-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-1.5 h-6 bg-yellow-500 rounded-full"></div>
-                    <h3 className="text-2xl md:text-3xl font-oswald font-black text-white uppercase italic tracking-widest leading-none">Respeito <span className="text-yellow-500">& Liberdade</span></h3>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-1.5 h-6 bg-yellow-500 rounded-full"></div>
+                      <h3 className="text-2xl md:text-3xl font-oswald font-black text-white uppercase italic tracking-widest leading-none">Respeito <span className="text-yellow-500">& Liberdade</span></h3>
+                    </div>
+                    
+                    <a 
+                      href="https://chat.whatsapp.com/EsjVd9CMEEl0tpgKhZ73XE" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 bg-[#25D366]/10 hover:bg-[#25D366]/20 border border-[#25D366]/20 px-4 py-2 rounded-xl transition-all group"
+                    >
+                      <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest leading-tight">
+                        venha fazer parte do grupo de amigos <br className="hidden sm:block"/> do LAMA Aparecida
+                      </span>
+                      <div className="bg-[#25D366] p-2 rounded-lg text-black group-hover:scale-110 transition-transform">
+                        <MessageCircle size={18} fill="currentColor" />
+                      </div>
+                    </a>
                   </div>
                   
                   <div ref={videoContainerRef} className="relative rounded-3xl md:rounded-[4rem] overflow-hidden bg-zinc-900 border border-zinc-800 aspect-[16/9] md:aspect-[21/9] shadow-3xl">
