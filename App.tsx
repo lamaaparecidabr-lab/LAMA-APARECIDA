@@ -4,7 +4,7 @@ import { Sidebar } from './components/Sidebar';
 import { RouteTracker } from './components/RouteTracker';
 import { MapView } from './components/MapView';
 import { View, User, Route } from './types';
-import { Bike, Compass, Users, Calendar, Trophy, Image as ImageIcon, ExternalLink, Shield, Gauge, ChevronRight, Zap, Map, Volume2, VolumeX, Maximize2, MapPin, Navigation, Lock, Radio, Award, Star, Loader2, Edit2, Save, X, Camera, UserPlus, Key, Trash2, CheckCircle2, Cake } from 'lucide-react';
+import { Bike, Compass, Users, Calendar, Trophy, Image as ImageIcon, ExternalLink, Shield, Gauge, ChevronRight, Zap, Map, Volume2, VolumeX, Maximize2, MapPin, Navigation, Lock, Radio, Award, Star, Loader2, Edit2, Save, X, Camera, UserPlus, Key, Trash2, CheckCircle2, Cake, Upload } from 'lucide-react';
 import { getRouteInsights } from './services/geminiService';
 import { supabase } from './services/supabaseClient';
 
@@ -79,6 +79,7 @@ const App: React.FC = () => {
   const [isMuted, setIsMuted] = useState(true);
   const videoRef = useRef<HTMLIFrameElement>(null);
   const videoContainerRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -165,6 +166,17 @@ const App: React.FC = () => {
       alert("Perfil atualizado!");
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setEditForm(prev => ({ ...prev, avatar: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -304,12 +316,9 @@ const App: React.FC = () => {
                     ></iframe>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-1.5 md:flex md:flex-wrap md:gap-4 items-center justify-start">
+                  <div className="grid grid-cols-2 gap-1.5 md:flex md:flex-wrap md:gap-4 items-center justify-start">
                      <button onClick={() => setView('clubhouse')} className="bg-white text-black px-1 md:px-12 py-3 md:py-5 rounded-xl md:rounded-[1.8rem] font-black uppercase text-[7px] md:text-[11px] hover:bg-yellow-500 transition-all flex flex-col md:flex-row items-center justify-center gap-1 md:gap-3 shadow-xl">
                        VISITAR SEDE <MapPin size={12} />
-                     </button>
-                     <button onClick={toggleMute} className="bg-zinc-900/80 backdrop-blur-md text-white px-1 md:px-10 py-3 md:py-5 rounded-xl md:rounded-[1.8rem] font-black uppercase text-[7px] md:text-[11px] hover:bg-yellow-500 hover:text-black transition-all flex flex-col md:flex-row items-center justify-center gap-1 md:gap-3 shadow-xl">
-                       VOLUME {isMuted ? <VolumeX size={12} /> : <Volume2 size={12} />}
                      </button>
                      <button onClick={handleFullscreen} className="bg-zinc-900/80 backdrop-blur-md text-white px-1 md:px-10 py-3 md:py-5 rounded-xl md:rounded-[1.8rem] font-black uppercase text-[7px] md:text-[11px] hover:bg-yellow-500 hover:text-black transition-all flex flex-col md:flex-row items-center justify-center gap-1 md:gap-3 shadow-xl">
                        AMPLIAR VÍDEO <Maximize2 size={12} />
@@ -351,8 +360,27 @@ const App: React.FC = () => {
                             <input type="date" className="w-full bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-2xl outline-none focus:border-yellow-500/50" value={editForm.birthDate} onChange={e => setEditForm({...editForm, birthDate: e.target.value})} />
                           </div>
                           <div className="space-y-2">
-                            <label className="text-[9px] font-black uppercase tracking-widest text-zinc-600 ml-4">URL do Avatar</label>
-                            <input type="text" className="w-full bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-2xl outline-none focus:border-yellow-500/50" value={editForm.avatar} onChange={e => setEditForm({...editForm, avatar: e.target.value})} />
+                            <label className="text-[9px] font-black uppercase tracking-widest text-zinc-600 ml-4">Foto de Perfil (.JPG / .PNG)</label>
+                            <div className="flex gap-4">
+                              <input 
+                                type="file" 
+                                ref={fileInputRef}
+                                className="hidden" 
+                                accept=".jpg,.jpeg,.png"
+                                onChange={handleFileChange}
+                              />
+                              <button 
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                className="flex-1 flex items-center justify-between bg-zinc-900 border border-zinc-800 text-zinc-400 px-6 py-4 rounded-2xl outline-none focus:border-yellow-500/50 hover:bg-zinc-800 transition-all text-sm font-bold"
+                              >
+                                {editForm.avatar && !editForm.avatar.startsWith('http') ? 'Imagem Selecionada' : 'Selecionar Arquivo'}
+                                <Upload size={18} />
+                              </button>
+                              {editForm.avatar && (
+                                <img src={editForm.avatar} alt="Preview" className="w-14 h-14 rounded-xl object-cover border border-zinc-800" />
+                              )}
+                            </div>
                           </div>
                         </div>
                         <div className="flex gap-4">
@@ -523,7 +551,7 @@ const App: React.FC = () => {
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 h-full">
             <header>
               <h2 className="text-4xl font-oswald font-bold uppercase text-white italic">Nossa <span className="text-yellow-500">Galeria</span></h2>
-              <p className="text-zinc-400 mt-2">Registros históricos e momentos da irmandade em Aparecida.</p>
+              <p className="text-zinc-400 mt-2">Registros históricos e momentos de irmandade em Aparecida.</p>
             </header>
 
             <div className="relative bg-zinc-900 rounded-[3rem] border border-zinc-800 overflow-hidden min-h-[500px] flex flex-col items-center justify-center p-12 text-center shadow-2xl">
