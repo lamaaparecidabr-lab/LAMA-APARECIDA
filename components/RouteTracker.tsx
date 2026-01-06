@@ -8,9 +8,8 @@ interface RouteTrackerProps {
   onSave?: (route: Route) => void;
 }
 
-// Função para calcular distância entre dois pontos (Haversine)
 const calculateDistance = (p1: RoutePoint, p2: RoutePoint): number => {
-  const R = 6371; // Raio da Terra em km
+  const R = 6371;
   const dLat = (p2.lat - p1.lat) * Math.PI / 180;
   const dLon = (p2.lng - p1.lng) * Math.PI / 180;
   const a = 
@@ -41,7 +40,7 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
 
   const startTracking = () => {
     if (!navigator.geolocation) {
-      alert("Seu dispositivo não suporta geolocalização.");
+      alert("GPS não suportado.");
       return;
     }
 
@@ -50,10 +49,10 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
     setPoints([]);
     setTotalDistance(0);
 
+    // WatchPosition é ideal para rastreamento contínuo em PCs e Celulares
     watchId.current = navigator.geolocation.watchPosition(
       (pos) => {
-        // Filtro de precisão: ignora se a precisão for maior que 60 metros
-        if (pos.coords.accuracy > 60) return;
+        if (pos.coords.accuracy > 70) return; // Ignora sinal fraco
 
         const newPoint: RoutePoint = {
           lat: pos.coords.latitude,
@@ -65,8 +64,7 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
           if (prev.length > 0) {
             const last = prev[prev.length - 1];
             const dist = calculateDistance(last, newPoint);
-            // Só adiciona se o deslocamento for maior que 5 metros
-            if (dist > 0.005) {
+            if (dist > 0.005) { // Movimento real detectado (> 5 metros)
               setTotalDistance(d => d + dist);
               return [...prev, newPoint];
             }
@@ -75,15 +73,8 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
           return [newPoint];
         });
       },
-      (err) => {
-        console.error("Erro de GPS:", err);
-        if (err.code === 1) alert("Permissão de localização negada. Por favor, ative o GPS.");
-      },
-      { 
-        enableHighAccuracy: true, 
-        timeout: 15000, 
-        maximumAge: 0 
-      }
+      (err) => alert("Erro GPS: Ative a localização e tente novamente."),
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
     );
   };
 
@@ -93,22 +84,18 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
       watchId.current = null;
     }
     
-    const now = new Date();
-    const dateStr = now.toLocaleDateString('pt-BR');
-    const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-
     if (onSave && points.length > 0) {
-      const newRoute: Route = {
+      const date = new Date();
+      onSave({
         id: Math.random().toString(36).substr(2, 9),
-        title: `Missão de ${dateStr} - ${timeStr}`,
-        description: `Rota gravada via GPS em tempo real. Duração total: ${formatTime(elapsed)}.`,
+        title: `Rota em ${date.toLocaleDateString()}`,
+        description: `Percurso gravado via GPS real. Duração: ${formatTime(elapsed)}.`,
         distance: `${totalDistance.toFixed(2)} km`,
-        difficulty: totalDistance > 50 ? 'Moderada' : 'Fácil',
+        difficulty: totalDistance > 40 ? 'Moderada' : 'Fácil',
         points: [...points],
         status: 'concluída',
         thumbnail: 'https://images.unsplash.com/photo-1458178351025-a764d88e0261?q=80&w=800&auto=format&fit=crop'
-      };
-      onSave(newRoute);
+      });
     }
 
     setIsRecording(false);
@@ -116,66 +103,54 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
     setElapsed(0);
     setPoints([]);
     setTotalDistance(0);
-    alert("Percurso salvo e gravado no mural!");
+    alert("Missão Concluída!");
   };
 
   const formatTime = (sec: number) => {
-    const h = Math.floor(sec / 3600);
     const m = Math.floor((sec % 3600) / 60);
     const s = sec % 60;
-    return `${h > 0 ? h + ':' : ''}${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
   return (
-    <div className="space-y-6 md:space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-500">
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-6">
       <header>
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-1.5 h-6 md:h-8 bg-red-600 rounded-full"></div>
-          <h2 className="text-3xl md:text-5xl font-oswald font-black uppercase tracking-tighter text-white italic">
-            Gravar <span className="text-yellow-500">Rota</span>
-          </h2>
-        </div>
-        <p className="text-yellow-500/60 font-black uppercase tracking-[0.2em] text-[8px] md:text-[10px] ml-4 md:ml-5">Radar de Telemetria Ativado</p>
+        <h2 className="text-3xl md:text-5xl font-oswald font-black uppercase text-white italic">
+          Gravar <span className="text-yellow-500">Rota</span>
+        </h2>
+        <p className="text-zinc-600 text-[10px] font-bold uppercase tracking-widest mt-2">Sistema de Telemetria Ativo</p>
       </header>
 
-      <div className="flex flex-col lg:grid lg:grid-cols-4 gap-6 md:gap-8">
-        <div className="lg:col-span-3 order-2 lg:order-1 relative z-0">
-          <MapView points={points} className="h-[200px] md:h-[400px] border-yellow-500/10 shadow-2xl rounded-[2rem] md:rounded-[3rem] overflow-hidden" isInteractive />
+      <div className="flex flex-col lg:grid lg:grid-cols-4 gap-6">
+        <div className="lg:col-span-3 relative">
+          <MapView points={points} className="h-[180px] md:h-[350px] rounded-[2rem] border-zinc-800 shadow-2xl" isInteractive />
         </div>
 
-        <div className="space-y-6 order-1 lg:order-2">
-          <div className="bg-zinc-950 p-6 md:p-8 rounded-[2rem] border border-zinc-900 space-y-4 md:space-y-6 shadow-2xl relative overflow-hidden">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-zinc-600 font-black uppercase text-[8px] md:text-[10px] tracking-widest flex items-center gap-2"><Clock size={14} className="text-yellow-500" /> Tempo</span>
-                <span className="text-xl md:text-2xl font-mono text-white font-black italic">{formatTime(elapsed)}</span>
-              </div>
-              <div className="flex items-center justify-between border-t border-zinc-900 pt-4">
-                <span className="text-zinc-600 font-black uppercase text-[8px] md:text-[10px] tracking-widest flex items-center gap-2"><Gauge size={14} className="text-red-600" /> Km</span>
-                <span className="text-xl md:text-2xl font-mono text-white font-black italic">{totalDistance.toFixed(2)}</span>
-              </div>
-            </div>
+        <div className="space-y-6">
+          <div className="bg-zinc-950 p-6 rounded-[2rem] border border-zinc-900 space-y-4">
+             <div className="flex justify-between">
+                <span className="text-zinc-600 text-[10px] uppercase font-black">Cronômetro</span>
+                <span className="text-xl font-mono text-white italic">{formatTime(elapsed)}</span>
+             </div>
+             <div className="flex justify-between border-t border-zinc-900 pt-4">
+                <span className="text-zinc-600 text-[10px] uppercase font-black">Distância</span>
+                <span className="text-xl font-mono text-white italic">{totalDistance.toFixed(2)} km</span>
+             </div>
           </div>
 
           {!isRecording ? (
-            <button
-              onClick={startTracking}
-              className="w-full bg-yellow-500 hover:bg-yellow-400 text-black py-4 md:py-6 rounded-2xl md:rounded-[2rem] font-black text-[10px] md:text-xs transition-all shadow-xl shadow-yellow-500/20 uppercase tracking-[0.2em] flex items-center justify-center gap-3"
-            >
-              <Play fill="currentColor" size={18} /> Iniciar Gravação
+            <button onClick={startTracking} className="w-full bg-yellow-500 text-black py-4 rounded-2xl font-black uppercase text-xs flex items-center justify-center gap-2">
+              <Play fill="currentColor" size={16} /> Iniciar Gravação
             </button>
           ) : (
-            <button
-              onClick={stopTracking}
-              className="w-full bg-red-600 hover:bg-red-700 text-white py-4 md:py-6 rounded-2xl md:rounded-[2rem] font-black text-[10px] md:text-xs transition-all shadow-xl shadow-red-600/20 uppercase tracking-[0.2em] flex items-center justify-center gap-3 animate-pulse"
-            >
-              <Square fill="currentColor" size={18} /> Encerrar Missão
+            <button onClick={stopTracking} className="w-full bg-red-600 text-white py-4 rounded-2xl font-black uppercase text-xs flex items-center justify-center gap-2 animate-pulse">
+              <Square fill="currentColor" size={16} /> Parar e Salvar
             </button>
           )}
 
-          <div className="bg-zinc-900/30 p-4 rounded-xl border border-zinc-800 flex items-center gap-3">
-             <Shield className="text-red-600 shrink-0" size={16} />
-             <p className="text-[8px] md:text-[10px] text-zinc-500 font-bold uppercase leading-relaxed italic">Segurança ativa: gravando coordenadas...</p>
+          <div className="flex items-center gap-2 bg-zinc-900/50 p-3 rounded-xl border border-zinc-800">
+             <Shield className="text-red-600" size={14} />
+             <p className="text-[9px] text-zinc-500 font-bold uppercase italic">Gravando coordenadas via satélite.</p>
           </div>
         </div>
       </div>
