@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { RouteTracker } from './components/RouteTracker';
@@ -65,7 +64,7 @@ const galleryImages = [
   "https://images.unsplash.com/photo-1558981806-ec527fa84c39?q=80&w=800",
   "https://images.unsplash.com/photo-1558981285-6f0c94958bb6?q=80&w=800",
   "https://images.unsplash.com/photo-1558981359-219d6364c9c8?q=80&w=800",
-  "https://images.unsplash.com/photo-1558981403-c5f91cbba527?q=80&w=800",
+  "https://images.unsplash.com/photo-1558981359-219d6364c9c8?q=80&w=800",
   "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?q=80&w=800",
   "https://images.unsplash.com/photo-1440723238343-9170993e81b4?q=80&w=800",
   "https://images.unsplash.com/photo-1591637333184-19aa84b3e01f?q=80&w=800",
@@ -265,6 +264,7 @@ const App: React.FC = () => {
         bike_model: editForm.bikeModel,
         avatar_url: editForm.avatar,
         birth_date: editForm.birthDate || null,
+        // Fix: Changed editForm.association_type to editForm.associationType to match state definition
         association_type: editForm.associationType || null,
         updated_at: new Date().toISOString()
       });
@@ -527,27 +527,27 @@ const App: React.FC = () => {
                           <img src={user?.avatar} alt="Avatar" className="relative w-48 h-48 md:w-64 md:h-64 rounded-[2.2rem] border-4 border-zinc-950 object-cover shadow-2xl" />
                           <div className="absolute -bottom-4 -right-4 bg-yellow-500 text-black p-3 rounded-2xl shadow-xl transform rotate-12"><Award size={24} strokeWidth={3} /></div>
                         </div>
-                        <div className="flex-1 text-center md:text-left space-y-8">
+                        <div className="flex-1 text-center md:text-left space-y-8 min-w-0">
                           <div>
                             <div className="flex flex-wrap justify-center md:justify-start gap-3 mb-4">
                               <span className="bg-yellow-500 text-black px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest">Membro Ativo</span>
                               <span className="bg-zinc-800 text-zinc-400 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-zinc-700">Capítulo Aparecida</span>
                             </div>
-                            <h2 className="text-5xl md:text-7xl lg:text-8xl font-oswald font-black text-white uppercase italic tracking-tighter leading-none mb-2">{user?.name}</h2>
-                            <p className="text-zinc-500 font-black uppercase tracking-[0.4em] text-[10px] md:text-xs italic">{user?.email}</p>
+                            <h2 className="text-5xl md:text-7xl lg:text-8xl font-oswald font-black text-white uppercase italic tracking-tighter leading-none mb-2 truncate">{user?.name}</h2>
+                            <p className="text-zinc-500 font-black uppercase tracking-[0.4em] text-[10px] md:text-xs italic truncate">{user?.email}</p>
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-                            <div className="bg-zinc-900/60 border border-zinc-800/80 p-6 md:p-8 rounded-[2rem] flex flex-col hover:border-yellow-500/30 transition-all group/card text-left">
-                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 mb-2">Motocicleta</span>
-                                <div className="flex items-center gap-4"><Bike size={24} className="text-yellow-500" /><span className="font-bold text-white text-lg italic">{user?.bikeModel}</span></div>
+                            <div className="bg-zinc-900/60 border border-zinc-800/80 p-6 md:p-8 rounded-[2rem] flex flex-col hover:border-yellow-500/30 transition-all group/card text-left min-w-0">
+                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 mb-2 shrink-0">Motocicleta</span>
+                                <div className="flex items-center gap-4 min-w-0"><Bike size={24} className="text-yellow-500 shrink-0" /><span className="font-bold text-white text-base md:text-lg italic break-words leading-tight">{user?.bikeModel}</span></div>
                             </div>
-                            <div className="bg-zinc-900/60 border border-zinc-800/80 p-6 md:p-8 rounded-[2rem] flex flex-col hover:border-pink-500/30 transition-all group/card text-left">
-                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 mb-2">Aniversário</span>
-                                <div className="flex items-center gap-4"><Cake size={24} className="text-pink-500" /><span className="font-bold text-white text-lg italic">{formatDate(user?.birthDate)}</span></div>
+                            <div className="bg-zinc-900/60 border border-zinc-800/80 p-6 md:p-8 rounded-[2rem] flex flex-col hover:border-pink-500/30 transition-all group/card text-left min-w-0">
+                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 mb-2 shrink-0">Aniversário</span>
+                                <div className="flex items-center gap-4 min-w-0"><Cake size={24} className="text-pink-500 shrink-0" /><span className="font-bold text-white text-base md:text-lg italic break-words leading-tight">{formatDate(user?.birthDate)}</span></div>
                             </div>
-                            <div className="bg-zinc-900/60 border border-zinc-800/80 p-6 md:p-8 rounded-[2rem] flex flex-col hover:border-blue-500/30 transition-all group/card text-left">
-                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 mb-2">Associação</span>
-                                <div className="flex items-center gap-4"><Briefcase size={24} className="text-blue-500" /><span className="font-bold text-white text-lg italic uppercase">{user?.associationType || 'Não informado'}</span></div>
+                            <div className="bg-zinc-900/60 border border-zinc-800/80 p-6 md:p-8 rounded-[2rem] flex flex-col hover:border-blue-500/30 transition-all group/card text-left min-w-0">
+                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 mb-2 shrink-0">Associação</span>
+                                <div className="flex items-center gap-4 min-w-0"><Briefcase size={24} className="text-blue-500 shrink-0" /><span className="font-bold text-white text-base md:text-lg italic break-words leading-tight uppercase">{user?.associationType || 'Não informado'}</span></div>
                             </div>
                           </div>
                           <div className="pt-4 flex flex-col sm:flex-row gap-4">
@@ -705,7 +705,10 @@ const App: React.FC = () => {
                   <header className="flex items-center gap-4"><div className="w-2 h-10 bg-yellow-500 rounded-full"></div><h2 className="text-5xl font-oswald font-black text-white italic uppercase tracking-tighter">Casa <span className="text-yellow-500">Club</span></h2></header>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
                     <div className="bg-zinc-950 p-8 md:p-12 rounded-[3rem] border border-zinc-900 flex flex-col justify-center space-y-8">
-                      <h3 className="text-3xl font-oswald font-black text-white uppercase italic tracking-tighter">Ponto de <span className="text-yellow-500">Encontro</span></h3>
+                      <h3 className="text-3xl font-oswald font-black text-white uppercase italic tracking-tighter flex items-center gap-3">
+                        <Shield className="text-yellow-500" size={28} />
+                        Ponto de <span className="text-yellow-500">Encontro</span>
+                      </h3>
                       <p className="text-zinc-400 text-lg">{CLUBHOUSE_ADDRESS}</p>
                       <div className="flex flex-col sm:flex-row gap-4">
                         <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(CLUBHOUSE_MARK_NAME)}`} target="_blank" className="flex-1 bg-white text-black py-4 rounded-2xl font-black uppercase text-center flex items-center justify-center gap-3">Google Maps <ExternalLink size={18}/></a>
