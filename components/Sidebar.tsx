@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Home, Compass, Map, User, LogOut, Radio, Image as ImageIcon, MapPin, Settings } from 'lucide-react';
 import { View, User as UserType } from '../types';
@@ -78,7 +77,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ user, currentView, setView, on
           <div className="p-8 border-t border-zinc-900/50">
             <button 
               onClick={onLogout} 
-              className="w-full flex items-center gap-6 px-7 py-5 text-zinc-800 hover:text-red-600 hover:bg-red-600/5 rounded-[2rem] transition-all group"
+              className="w-full flex items-center gap-6 px-7 py-5 text-zinc-500 hover:text-red-600 hover:bg-red-600/5 rounded-[2rem] transition-all group"
             >
               <LogOut size={22} className="group-hover:-translate-x-1 transition-transform" />
               <span className="font-black uppercase tracking-[0.25em] text-[9px]">Sair do Radar</span>
@@ -110,7 +109,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ user, currentView, setView, on
           {user && (
             <button
               onClick={onLogout}
-              className="flex flex-col items-center justify-center flex-1 text-zinc-800"
+              className="flex flex-col items-center justify-center flex-1 text-zinc-500"
             >
               <LogOut size={16} strokeWidth={2} />
               <span className="text-[6px] font-black uppercase mt-0.5 tracking-tighter">Sair</span>

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { RouteTracker } from './components/RouteTracker';
@@ -244,6 +243,7 @@ const App: React.FC = () => {
     setIsUpdating(true);
 
     try {
+      // Fix: Use editForm.birthDate instead of non-existent birth_date property on the state object.
       const { error } = await supabase.from('profiles').upsert({
         id: user.id,
         name: editForm.name,
@@ -332,14 +332,16 @@ const App: React.FC = () => {
   };
 
   const handleLogout = async () => {
+    setIsLoading(true);
     try {
       await supabase.auth.signOut();
+    } catch (err) {
+      console.error("Erro ao encerrar sessão no servidor:", err);
+    } finally {
+      // Limpeza obrigatória do estado local, mesmo se o servidor falhar
       setIsAuthenticated(false);
       setUser(null);
-      setIsLoading(false);
       setView('home');
-    } catch (err) {
-      console.error("Erro no logout:", err);
       setIsLoading(false);
     }
   };
