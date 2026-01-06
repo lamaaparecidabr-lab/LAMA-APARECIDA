@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { RouteTracker } from './components/RouteTracker';
@@ -427,7 +428,24 @@ const App: React.FC = () => {
     });
   };
 
+  const getSortedMembersByBirthMonth = () => {
+    return [...allMembers].sort((a, b) => {
+      if (!a.birthDate) return 1;
+      if (!b.birthDate) return -1;
+      const monthA = new Date(a.birthDate).getUTCMonth();
+      const monthB = new Date(b.birthDate).getUTCMonth();
+      
+      if (monthA !== monthB) return monthA - monthB;
+      
+      const dayA = new Date(a.birthDate).getUTCDate();
+      const dayB = new Date(b.birthDate).getUTCDate();
+      return dayA - dayB;
+    });
+  };
+
   const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+
+  const isAdmin = user?.role === 'admin' || user?.email === ADMIN_EMAIL;
 
   if (isLoading) return (
     <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-6">
@@ -465,7 +483,14 @@ const App: React.FC = () => {
                 <div className="space-y-8">
                   <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-zinc-900 pb-12">
                     <div className="flex items-center gap-10">
-                      <img src={LAMA_LOGO_URL} alt="Logo" className="w-28 h-28 object-contain" />
+                      <div className="relative group shrink-0">
+                        <div className="absolute inset-0 bg-yellow-500/20 blur-3xl rounded-full scale-150 opacity-0 group-hover:opacity-100 transition-all duration-700"></div>
+                        <img 
+                          src={LAMA_LOGO_URL} 
+                          alt="Logo" 
+                          className="relative w-28 h-28 object-contain filter drop-shadow-[0_0_15px_rgba(234,179,8,0.3)] transform group-hover:scale-105 transition-transform duration-500" 
+                        />
+                      </div>
                       <div>
                         <span className="text-yellow-500 font-black uppercase tracking-widest text-xs md:text-lg">LATIN AMERICAN MOTORCYCLE ASSOCIATION</span>
                         <h1 className="text-3xl md:text-5xl font-oswald font-black text-white uppercase italic mt-2">Capítulo <span className="text-yellow-500">Aparecida</span></h1>
@@ -819,6 +844,60 @@ const App: React.FC = () => {
                       >
                         ACESSAR GALERIA OFICIAL <ExternalLink size={20} />
                       </a>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {currentView === 'admin' && isAdmin && (
+                <div className="space-y-12 animate-in fade-in slide-in-from-bottom-8 duration-700">
+                  <header className="flex items-center gap-4">
+                    <div className="w-2 h-10 bg-red-600 rounded-full"></div>
+                    <h2 className="text-4xl font-oswald font-black text-white italic uppercase tracking-tighter">Painel de <span className="text-yellow-500">Controle</span></h2>
+                  </header>
+
+                  <div className="bg-zinc-950 p-8 md:p-12 rounded-[3rem] border border-zinc-900 shadow-3xl">
+                    <div className="flex items-center gap-4 mb-10">
+                      <Users className="text-yellow-500" size={32} />
+                      <h3 className="text-2xl font-oswald font-black text-white uppercase italic tracking-tighter">Membros do Capítulo</h3>
+                    </div>
+
+                    <div className="overflow-x-auto custom-scrollbar">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="border-b border-zinc-900">
+                            <th className="pb-4 px-4 text-[10px] font-black uppercase tracking-widest text-zinc-600">Membro</th>
+                            <th className="pb-4 px-4 text-[10px] font-black uppercase tracking-widest text-zinc-600">Nascimento</th>
+                            <th className="pb-4 px-4 text-[10px] font-black uppercase tracking-widest text-zinc-600">Moto Principal</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-900/50">
+                          {getSortedMembersByBirthMonth().map((member) => (
+                            <tr key={member.id} className="group hover:bg-zinc-900/30 transition-all">
+                              <td className="py-6 px-4">
+                                <div className="flex items-center gap-4">
+                                  <img src={member.avatar} className="w-12 h-12 rounded-2xl border border-zinc-800 object-cover shadow-lg" alt={member.name} />
+                                  <span className="font-bold text-white uppercase text-sm tracking-tight">{member.name}</span>
+                                </div>
+                              </td>
+                              <td className="py-6 px-4">
+                                <div className="flex flex-col">
+                                  <span className="text-yellow-500 font-mono text-sm font-black italic">{formatDate(member.birthDate)}</span>
+                                  <span className="text-[9px] text-zinc-600 font-black uppercase tracking-widest mt-1">
+                                    {member.birthDate ? monthNames[new Date(member.birthDate).getUTCMonth()] : 'N/A'}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="py-6 px-4">
+                                <div className="flex items-center gap-3">
+                                  <Bike size={16} className="text-zinc-600" />
+                                  <span className="font-bold text-zinc-400 text-sm italic">{member.bikeModel || 'Não informado'}</span>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 </div>
