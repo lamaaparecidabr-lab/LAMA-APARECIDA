@@ -8,12 +8,27 @@ interface RouteTrackerProps {
   onSave?: (route: Route) => void;
 }
 
+// Função para calcular distância entre dois pontos (Haversine)
+const calculateDistance = (p1: RoutePoint, p2: RoutePoint): number => {
+  const R = 6371; // Raio da Terra em km
+  const dLat = (p2.lat - p1.lat) * Math.PI / 180;
+  const dLon = (p2.lng - p1.lng) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(p1.lat * Math.PI / 180) * Math.cos(p2.lat * Math.PI / 180) * 
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
+
 export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [points, setPoints] = useState<RoutePoint[]>([]);
+  const [totalDistance, setTotalDistance] = useState(0);
   const [startTime, setStartTime] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const watchId = useRef<number | null>(null);
+  const lastPointRef = useRef<RoutePoint | null>(null);
 
   useEffect(() => {
     let interval: any;
@@ -27,25 +42,51 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
 
   const startTracking = () => {
     if (!navigator.geolocation) {
-      alert("Geolocalização não suportada.");
+      alert("Seu dispositivo não suporta geolocalização.");
       return;
     }
 
+    // Solicita permissão e inicia
     setIsRecording(true);
     setStartTime(Date.now());
     setPoints([]);
+    setTotalDistance(0);
+    lastPointRef.current = null;
 
     watchId.current = navigator.geolocation.watchPosition(
       (pos) => {
-        const newPoint = {
+        // Filtro de precisão básica (ignora se a precisão for pior que 100 metros para evitar "drifting")
+        if (pos.coords.accuracy > 100) return;
+
+        const newPoint: RoutePoint = {
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
           timestamp: pos.timestamp,
         };
-        setPoints(prev => [...prev, newPoint]);
+
+        setPoints(prev => {
+          if (prev.length > 0) {
+            const last = prev[prev.length - 1];
+            const dist = calculateDistance(last, newPoint);
+            // Só adiciona distância se o deslocamento for significativo (> 5 metros)
+            if (dist > 0.005) {
+              setTotalDistance(d => d + dist);
+              return [...prev, newPoint];
+            }
+            return prev;
+          }
+          return [newPoint];
+        });
       },
-      (err) => console.error(err),
-      { enableHighAccuracy: true }
+      (err) => {
+        console.error("Erro de GPS:", err);
+        if (err.code === 1) alert("Permissão de localização negada. Ative o GPS.");
+      },
+      { 
+        enableHighAccuracy: true, 
+        timeout: 10000, 
+        maximumAge: 0 
+      }
     );
   };
 
@@ -54,7 +95,6 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
       navigator.geolocation.clearWatch(watchId.current);
     }
     
-    const distance = (points.length * 0.05).toFixed(2);
     const now = new Date();
     const dateStr = now.toLocaleDateString('pt-BR');
     const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -63,9 +103,9 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
       const newRoute: Route = {
         id: Math.random().toString(36).substr(2, 9),
         title: `Missão de ${dateStr} - ${timeStr}`,
-        description: `Rota gravada em tempo real pelo membro. Duração: ${formatTime(elapsed)}.`,
-        distance: `${distance} km`,
-        difficulty: points.length > 50 ? 'Moderada' : 'Fácil',
+        description: `Rota gravada via GPS. Duração: ${formatTime(elapsed)}.`,
+        distance: `${totalDistance.toFixed(2)} km`,
+        difficulty: totalDistance > 50 ? 'Moderada' : 'Fácil',
         points: [...points],
         status: 'concluída',
         thumbnail: 'https://images.unsplash.com/photo-1458178351025-a764d88e0261?q=80&w=800&auto=format&fit=crop'
@@ -77,7 +117,8 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
     setStartTime(null);
     setElapsed(0);
     setPoints([]);
-    alert("Percurso salvo com sucesso na aba 'Rotas Concluídas'!");
+    setTotalDistance(0);
+    alert("Percurso salvo com sucesso!");
   };
 
   const formatTime = (sec: number) => {
@@ -96,12 +137,12 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
             Gravar <span className="text-yellow-500">Rota</span>
           </h2>
         </div>
-        <p className="text-yellow-500/60 font-black uppercase tracking-[0.2em] text-[8px] md:text-[10px] ml-4 md:ml-5">Telemetria em Tempo Real</p>
+        <p className="text-yellow-500/60 font-black uppercase tracking-[0.2em] text-[8px] md:text-[10px] ml-4 md:ml-5">Telemetria GPS em Tempo Real</p>
       </header>
 
       <div className="flex flex-col lg:grid lg:grid-cols-4 gap-6 md:gap-10">
         <div className="lg:col-span-3 order-2 lg:order-1 relative z-0">
-          <MapView points={points} className="h-[300px] md:h-[600px] border-yellow-500/10 shadow-2xl rounded-[2rem] md:rounded-[3rem] overflow-hidden" isInteractive />
+          <MapView points={points} className="h-[250px] md:h-[500px] border-yellow-500/10 shadow-2xl rounded-[2rem] md:rounded-[3rem] overflow-hidden" isInteractive />
         </div>
 
         <div className="space-y-6 md:space-y-8 order-1 lg:order-2">
@@ -113,7 +154,7 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
               </div>
               <div className="flex items-center justify-between border-t border-zinc-900 pt-4 md:pt-6">
                 <span className="text-zinc-600 font-black uppercase text-[8px] md:text-[10px] tracking-widest flex items-center gap-2"><Gauge size={14} className="text-red-600" /> Km</span>
-                <span className="text-2xl md:text-3xl font-mono text-white font-black italic">{(points.length * 0.05).toFixed(2)}</span>
+                <span className="text-2xl md:text-3xl font-mono text-white font-black italic">{totalDistance.toFixed(2)}</span>
               </div>
             </div>
           </div>
@@ -136,7 +177,7 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
 
           <div className="bg-zinc-900/30 p-4 rounded-xl border border-zinc-800 flex items-center gap-3">
              <Shield className="text-red-600 shrink-0" size={16} />
-             <p className="text-[8px] md:text-[10px] text-zinc-500 font-bold uppercase leading-relaxed italic">Dados protegidos pelo radar interno.</p>
+             <p className="text-[8px] md:text-[10px] text-zinc-500 font-bold uppercase leading-relaxed italic">Radar de precisão ativado.</p>
           </div>
         </div>
       </div>
