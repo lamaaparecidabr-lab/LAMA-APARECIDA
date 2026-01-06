@@ -4,7 +4,7 @@ import { Sidebar } from './components/Sidebar';
 import { RouteTracker } from './components/RouteTracker';
 import { MapView } from './components/MapView';
 import { View, User, Route } from './types';
-import { Bike, Compass, Users, Calendar, Trophy, Image as ImageIcon, ExternalLink, Shield, Gauge, ChevronRight, Zap, Map, Volume2, VolumeX, Maximize2, MapPin, Navigation, Lock, Radio, Award, Star, Loader2, Edit2, Save, X, Camera, UserPlus, Key, Trash2, CheckCircle2, Cake, Upload, MessageCircle } from 'lucide-react';
+import { Bike, Compass, Users, Calendar, Trophy, Image as ImageIcon, ExternalLink, Shield, Gauge, ChevronRight, Zap, Map, Volume2, VolumeX, Maximize2, MapPin, Navigation, Lock, Radio, Award, Star, Loader2, Edit2, Save, X, Camera, UserPlus, Key, Trash2, CheckCircle2, Cake, Upload, MessageCircle, Briefcase } from 'lucide-react';
 import { getRouteInsights } from './services/geminiService';
 import { supabase } from './services/supabaseClient';
 
@@ -74,7 +74,7 @@ const App: React.FC = () => {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
-  const [editForm, setEditForm] = useState({ name: '', bikeModel: '', avatar: '', birthDate: '' });
+  const [editForm, setEditForm] = useState({ name: '', bikeModel: '', avatar: '', birthDate: '', associationType: '' as any });
   const [isMuted, setIsMuted] = useState(true);
   const videoRef = useRef<HTMLIFrameElement>(null);
   const videoContainerRef = useRef<HTMLDivElement>(null);
@@ -165,6 +165,7 @@ const App: React.FC = () => {
         bikeModel: profileData?.bike_model || 'Não informado',
         avatar: profileData?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${authUser.id}`,
         birthDate: profileData?.birth_date || '',
+        associationType: profileData?.association_type || undefined,
         role: (profileData?.role as 'admin' | 'member') || (authUser.email === ADMIN_EMAIL ? 'admin' : 'member')
       };
       
@@ -173,7 +174,8 @@ const App: React.FC = () => {
         name: userData.name,
         bikeModel: userData.bikeModel || '',
         avatar: userData.avatar || '',
-        birthDate: userData.birthDate || ''
+        birthDate: userData.birthDate || '',
+        associationType: userData.associationType || ''
       });
       setIsAuthenticated(true);
     } catch (err) {
@@ -188,7 +190,7 @@ const App: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, name, avatar_url, birth_date, bike_model')
+        .select('id, name, avatar_url, birth_date, bike_model, association_type')
         .order('name', { ascending: true });
       
       if (error) throw error;
@@ -199,6 +201,7 @@ const App: React.FC = () => {
           avatar: m.avatar_url,
           birthDate: m.birth_date,
           bikeModel: m.bike_model,
+          associationType: m.association_type,
           email: '' // Não expomos email por privacidade
         })));
       }
@@ -262,6 +265,7 @@ const App: React.FC = () => {
         bike_model: editForm.bikeModel,
         avatar_url: editForm.avatar,
         birth_date: editForm.birthDate || null,
+        association_type: editForm.associationType || null,
         updated_at: new Date().toISOString()
       });
 
@@ -269,7 +273,7 @@ const App: React.FC = () => {
 
       setUser({ ...user, ...editForm });
       setIsEditingProfile(false);
-      fetchMembers(); // Atualiza lista de aniversariantes
+      fetchMembers(); // Atualiza lista
       alert("Perfil atualizado com sucesso!");
     } catch (err: any) {
       alert("Erro ao atualizar perfil: " + err.message);
@@ -578,6 +582,19 @@ const App: React.FC = () => {
                               <input type="date" className="w-full bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-2xl outline-none focus:border-yellow-500/50" value={editForm.birthDate} onChange={e => setEditForm({...editForm, birthDate: e.target.value})} />
                             </div>
                             <div className="space-y-2">
+                              <label className="text-[9px] font-bold uppercase tracking-widest text-zinc-600 ml-4">Tipo de Associação</label>
+                              <select 
+                                className="w-full bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-2xl outline-none focus:border-yellow-500/50" 
+                                value={editForm.associationType} 
+                                onChange={e => setEditForm({...editForm, associationType: e.target.value as any})}
+                              >
+                                <option value="">Selecione...</option>
+                                <option value="PILOTO">PILOTO</option>
+                                <option value="ESPOSA">ESPOSA</option>
+                                <option value="ASSOCIADO">ASSOCIADO</option>
+                              </select>
+                            </div>
+                            <div className="space-y-2 md:col-span-2">
                               <label className="text-[9px] font-bold uppercase tracking-widest text-zinc-600 ml-4">Foto de Perfil (.JPG / .PNG)</label>
                               <div className="flex gap-4">
                                 <input 
@@ -634,14 +651,14 @@ const App: React.FC = () => {
                               <p className="text-zinc-500 font-black uppercase tracking-[0.4em] text-[10px] md:text-xs italic">{user?.email}</p>
                             </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                               <div className="bg-zinc-900/60 border border-zinc-800/80 p-6 md:p-8 rounded-[2rem] flex items-center gap-6 hover:border-yellow-500/30 transition-all group/card">
                                 <div className="bg-yellow-500/10 p-4 rounded-2xl group-hover/card:bg-yellow-500/20 transition-all">
                                   <Bike size={32} className="text-yellow-500" />
                                 </div>
                                 <div className="flex flex-col text-left">
                                   <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 mb-1">Motocicleta</span>
-                                  <span className="font-bold text-white text-lg md:text-xl tracking-tight">{user?.bikeModel}</span>
+                                  <span className="font-bold text-white text-lg md:text-xl tracking-tight truncate">{user?.bikeModel}</span>
                                 </div>
                               </div>
 
@@ -652,6 +669,16 @@ const App: React.FC = () => {
                                 <div className="flex flex-col text-left">
                                   <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 mb-1">Aniversário</span>
                                   <span className="font-bold text-white text-lg md:text-xl tracking-tight italic">{formatDate(user?.birthDate)}</span>
+                                </div>
+                              </div>
+
+                              <div className="bg-zinc-900/60 border border-zinc-800/80 p-6 md:p-8 rounded-[2rem] flex items-center gap-6 hover:border-blue-500/30 transition-all group/card">
+                                <div className="bg-blue-500/10 p-4 rounded-2xl group-hover/card:bg-blue-500/20 transition-all">
+                                  <Briefcase size={32} className="text-blue-500" />
+                                </div>
+                                <div className="flex flex-col text-left">
+                                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 mb-1">Associação</span>
+                                  <span className="font-bold text-white text-lg md:text-xl tracking-tight uppercase italic">{user?.associationType || 'Não informado'}</span>
                                 </div>
                               </div>
                             </div>
@@ -877,7 +904,10 @@ const App: React.FC = () => {
                               <td className="py-6 px-4">
                                 <div className="flex items-center gap-4">
                                   <img src={member.avatar} className="w-12 h-12 rounded-2xl border border-zinc-800 object-cover shadow-lg" alt={member.name} />
-                                  <span className="font-bold text-white uppercase text-sm tracking-tight">{member.name}</span>
+                                  <div className="flex flex-col">
+                                    <span className="font-bold text-white uppercase text-sm tracking-tight">{member.name}</span>
+                                    <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest">{member.associationType || 'ASSOCIADO'}</span>
+                                  </div>
                                 </div>
                               </td>
                               <td className="py-6 px-4">

@@ -6,6 +6,7 @@ export interface User {
   bikeModel?: string;
   avatar?: string;
   birthDate?: string;
+  associationType?: 'PILOTO' | 'ESPOSA' | 'ASSOCIADO';
   role?: 'admin' | 'member';
 }
 
