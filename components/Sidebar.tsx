@@ -33,7 +33,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ user, currentView, setView, on
   return (
     <>
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex w-80 bg-black border-r border-zinc-900 flex-col h-screen sticky top-0 z-40 shadow-2xl">
+      <aside className="hidden md:flex w-80 bg-[#0a0a0f] border-r border-zinc-900 flex-col h-screen sticky top-0 z-40 shadow-2xl">
         <div className="p-10 flex flex-row items-center gap-6">
           <div className="relative group shrink-0">
             <div className="absolute inset-0 bg-yellow-500/20 blur-3xl rounded-full scale-150 opacity-0 group-hover:opacity-100 transition-all duration-700"></div>
@@ -95,7 +95,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ user, currentView, setView, on
       </aside>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-2xl border-t border-zinc-900 z-[2000] shadow-[0_-5px_30px_rgba(0,0,0,0.8)]">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#0a0a0f]/95 backdrop-blur-2xl border-t border-zinc-900 z-[2000] shadow-[0_-5px_30px_rgba(0,0,0,0.8)]">
         <div className="flex items-center justify-around h-14 px-1">
           {menuItems.map((item) => (
             <button

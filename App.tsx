@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { RouteTracker } from './components/RouteTracker';
@@ -23,7 +22,7 @@ const iconicRoutes: Route[] = [
     difficulty: 'Lendária',
     points: [],
     status: 'planejada',
-    thumbnail: 'https://destinosnotaveis.com.br/wp-content/uploads/2022/08/Serra_do_Rio_do_Rastro-1024x640.jpg',
+    thumbnail: 'https://destinosnotaveis.com.br/wp-content/uploads/2022/08/Serra_rio_do_rastro-1024x640.jpg',
     isOfficial: true
   },
   {
@@ -438,7 +437,7 @@ const App: React.FC = () => {
   );
 
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-[#050505] text-zinc-300">
+    <div className="flex flex-col md:flex-row min-h-screen bg-[#121212] text-zinc-300">
       <Sidebar user={user} currentView={currentView} setView={setView} onLogout={handleLogout} />
       
       <main className="flex-1 p-5 md:p-12 pb-32 md:pb-12 max-w-[1400px] mx-auto w-full overflow-y-auto custom-scrollbar flex flex-col">
