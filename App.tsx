@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { RouteTracker } from './components/RouteTracker';
@@ -98,11 +99,13 @@ const App: React.FC = () => {
   useEffect(() => {
     let mounted = true;
 
+    // Timer de segurança estendido para garantir que o radar nunca trave
     const safetyTimer = setTimeout(() => {
       if (mounted && isLoading) {
+        console.warn("Safety timer triggered: Forcing isLoading(false)");
         setIsLoading(false);
       }
-    }, 5000);
+    }, 8000);
 
     const checkInitialSession = async () => {
       try {
@@ -124,9 +127,11 @@ const App: React.FC = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
+      
       if (session?.user) {
         await syncUserData(session.user);
       } else {
+        // Garante a limpeza do estado no logout
         setIsAuthenticated(false);
         setUser(null);
         setIsLoading(false);
@@ -148,7 +153,12 @@ const App: React.FC = () => {
   }, [isAuthenticated]);
 
   const syncUserData = async (authUser: any) => {
-    if (syncInProgress.current) return;
+    // Se já estiver sincronizando, apenas desliga o carregamento (caso tenha sido ativado pelo handleLogin)
+    if (syncInProgress.current) {
+      setIsLoading(false);
+      return;
+    }
+    
     syncInProgress.current = true;
     
     try {
@@ -181,6 +191,7 @@ const App: React.FC = () => {
     } catch (err) {
       console.error("Erro na sincronização:", err);
     } finally {
+      // Garantia absoluta de que o carregamento termina
       setIsLoading(false);
       syncInProgress.current = false;
     }
@@ -239,13 +250,14 @@ const App: React.FC = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setIsLoading(true); // Ativa o sinalizador antes da tentativa
     try {
       const { error } = await supabase.auth.signInWithPassword(loginForm);
       if (error) {
         alert("Acesso negado: " + error.message);
-        setIsLoading(false);
+        setIsLoading(false); // Desativa em caso de erro imediato
       }
+      // Se sucesso, o onAuthStateChange cuidará de chamar syncUserData e desativar o carregamento
     } catch (err: any) {
       alert("Erro inesperado no login.");
       setIsLoading(false);
@@ -264,7 +276,6 @@ const App: React.FC = () => {
         bike_model: editForm.bikeModel,
         avatar_url: editForm.avatar,
         birth_date: editForm.birthDate || null,
-        // Fix: Changed editForm.association_type to editForm.associationType to match state definition
         association_type: editForm.associationType || null,
         updated_at: new Date().toISOString()
       });
@@ -347,10 +358,14 @@ const App: React.FC = () => {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setIsAuthenticated(false);
-    setUser(null);
-    setView('home');
+    setIsLoading(true); // Indica que o radar está processando a saída
+    try {
+      await supabase.auth.signOut();
+      // O observador onAuthStateChange lidará com o reset dos estados
+    } catch (err) {
+      console.error("Erro no logout:", err);
+      setIsLoading(false);
+    }
   };
 
   const toggleMute = () => {
