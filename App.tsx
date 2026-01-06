@@ -102,36 +102,20 @@ const App: React.FC = () => {
     // Timer de segurança estendido para garantir que o radar nunca trave
     const safetyTimer = setTimeout(() => {
       if (mounted && isLoading) {
-        console.warn("Safety timer triggered: Forcing isLoading(false)");
         setIsLoading(false);
       }
-    }, 8000);
+    }, 10000);
 
-    const checkInitialSession = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (mounted) {
-          if (session?.user) {
-            await syncUserData(session.user);
-          } else {
-            setIsLoading(false);
-          }
-        }
-      } catch (err) {
-        console.error("Erro no checkInitialSession:", err);
-        if (mounted) setIsLoading(false);
-      }
-    };
-
-    checkInitialSession();
-
+    // Confiamos exclusivamente no onAuthStateChange para gerenciar a sessão
+    // Ele dispara automaticamente no mount com a sessão atual (se existir)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
+      
+      console.log("Auth Event:", event);
       
       if (session?.user) {
         await syncUserData(session.user);
       } else {
-        // Garante a limpeza do estado no logout
         setIsAuthenticated(false);
         setUser(null);
         setIsLoading(false);
@@ -153,45 +137,52 @@ const App: React.FC = () => {
   }, [isAuthenticated]);
 
   const syncUserData = async (authUser: any) => {
-    // Se já estiver sincronizando, apenas desliga o carregamento (caso tenha sido ativado pelo handleLogin)
-    if (syncInProgress.current) {
-      setIsLoading(false);
-      return;
-    }
-    
+    if (syncInProgress.current) return;
     syncInProgress.current = true;
     
     try {
-      const { data: profileData } = await supabase
+      // Passo 1: Definir dados básicos para liberar a interface imediatamente
+      const basicUserData: User = {
+        id: authUser.id,
+        name: authUser.user_metadata?.name || 'Membro L.A.M.A.',
+        email: authUser.email || '',
+        avatar: authUser.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${authUser.id}`,
+        role: authUser.email === ADMIN_EMAIL ? 'admin' : 'member'
+      };
+      
+      setUser(basicUserData);
+      setIsAuthenticated(true);
+
+      // Passo 2: Tentar carregar dados enriquecidos do perfil
+      const { data: profileData, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', authUser.id)
         .maybeSingle();
 
-      const userData: User = {
-        id: authUser.id,
-        name: profileData?.name || authUser.user_metadata?.name || 'Membro L.A.M.A.',
-        email: authUser.email || '',
-        bikeModel: profileData?.bike_model || 'Não informado',
-        avatar: profileData?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${authUser.id}`,
-        birthDate: profileData?.birth_date || '',
-        associationType: profileData?.association_type || undefined,
-        role: (profileData?.role as 'admin' | 'member') || (authUser.email === ADMIN_EMAIL ? 'admin' : 'member')
-      };
-      
-      setUser(userData);
-      setEditForm({
-        name: userData.name,
-        bikeModel: userData.bikeModel || '',
-        avatar: userData.avatar || '',
-        birthDate: userData.birthDate || '',
-        associationType: userData.associationType || ''
-      });
-      setIsAuthenticated(true);
+      if (profileData && !error) {
+        const fullUserData: User = {
+          ...basicUserData,
+          name: profileData.name || basicUserData.name,
+          bikeModel: profileData.bike_model || 'Não informado',
+          avatar: profileData.avatar_url || basicUserData.avatar,
+          birthDate: profileData.birth_date || '',
+          associationType: profileData.association_type || undefined,
+          role: profileData.role || basicUserData.role
+        };
+        
+        setUser(fullUserData);
+        setEditForm({
+          name: fullUserData.name,
+          bikeModel: fullUserData.bikeModel || '',
+          avatar: fullUserData.avatar || '',
+          birthDate: fullUserData.birthDate || '',
+          associationType: fullUserData.associationType || ''
+        });
+      }
     } catch (err) {
       console.error("Erro na sincronização:", err);
     } finally {
-      // Garantia absoluta de que o carregamento termina
       setIsLoading(false);
       syncInProgress.current = false;
     }
@@ -250,14 +241,14 @@ const App: React.FC = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true); // Ativa o sinalizador antes da tentativa
+    setIsLoading(true);
     try {
       const { error } = await supabase.auth.signInWithPassword(loginForm);
       if (error) {
         alert("Acesso negado: " + error.message);
-        setIsLoading(false); // Desativa em caso de erro imediato
+        setIsLoading(false);
       }
-      // Se sucesso, o onAuthStateChange cuidará de chamar syncUserData e desativar o carregamento
+      // O onAuthStateChange cuidará do resto se o login for bem-sucedido
     } catch (err: any) {
       alert("Erro inesperado no login.");
       setIsLoading(false);
@@ -358,10 +349,9 @@ const App: React.FC = () => {
   };
 
   const handleLogout = async () => {
-    setIsLoading(true); // Indica que o radar está processando a saída
+    setIsLoading(true);
     try {
       await supabase.auth.signOut();
-      // O observador onAuthStateChange lidará com o reset dos estados
     } catch (err) {
       console.error("Erro no logout:", err);
       setIsLoading(false);
