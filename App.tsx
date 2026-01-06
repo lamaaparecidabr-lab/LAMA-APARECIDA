@@ -67,20 +67,6 @@ const iconicRoutes: Route[] = [
   }
 ];
 
-const galleryImages = [
-  "https://images.unsplash.com/photo-1558981806-ec527fa84c39?q=80&w=800",
-  "https://images.unsplash.com/photo-1558981285-6f0c94958bb6?q=80&w=800",
-  "https://images.unsplash.com/photo-1558981359-219d6364c9c8?q=80&w=800",
-  "https://images.unsplash.com/photo-1558981359-219d6364c9c8?q=80&w=800",
-  "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?q=80&w=800",
-  "https://images.unsplash.com/photo-1440723238343-9170993e81b4?q=80&w=800",
-  "https://images.unsplash.com/photo-1591637333184-19aa84b3e01f?q=80&w=800",
-  "https://images.unsplash.com/photo-1558981424-86a2f127d817?q=80&w=800",
-  "https://images.unsplash.com/photo-15599819811279-d5ad9cccf838?q=80&w=800",
-  "https://images.unsplash.com/photo-1558981396-5f0d0325ed91?q=80&w=800",
-  "https://images.unsplash.com/photo-1558981396-5f0d0325ed91?q=80&w=800"
-];
-
 const ADMIN_EMAIL = 'lama.aparecidabr@gmail.com';
 
 const App: React.FC = () => {
@@ -165,7 +151,6 @@ const App: React.FC = () => {
           bikeModel: profileData.bike_model || 'Não informado',
           avatar: profileData.avatar_url || basicUserData.avatar,
           birthDate: profileData.birth_date || '',
-          // Use undefined explicitly instead of empty string to satisfy union type
           associationType: profileData.association_type || undefined,
           role: profileData.role || basicUserData.role
         };
@@ -176,7 +161,6 @@ const App: React.FC = () => {
           bikeModel: fullUserData.bikeModel || '',
           avatar: fullUserData.avatar || '',
           birthDate: fullUserData.birthDate || '',
-          // Fixed line 177: Remove incorrect empty string fallback for union type
           associationType: fullUserData.associationType
         });
       }
@@ -349,17 +333,13 @@ const App: React.FC = () => {
 
   const handleLogout = async () => {
     try {
-      // Faz o logout no Supabase primeiro
       await supabase.auth.signOut();
-      
-      // Limpa estados localmente imediatamente para evitar looping de loading
       setIsAuthenticated(false);
       setUser(null);
       setIsLoading(false);
       setView('home');
     } catch (err) {
       console.error("Erro no logout:", err);
-      // Fallback: garante que o loading suma em caso de erro
       setIsLoading(false);
     }
   };
@@ -661,22 +641,34 @@ const App: React.FC = () => {
               )}
 
               {currentView === 'gallery' && (
-                <div className="space-y-12 animate-in fade-in duration-700">
-                  <header className="flex items-center gap-4">
-                    <div className="w-2 h-10 bg-yellow-500 rounded-full"></div>
-                    <h2 className="text-5xl font-oswald font-black text-white italic uppercase tracking-tighter">Galeria <span className="text-yellow-500">L.A.M.A.</span></h2>
+                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 h-full">
+                  <header>
+                    <h2 className="text-4xl font-oswald font-bold uppercase text-white italic">Nossa <span className="text-yellow-500">Galeria</span></h2>
+                    <p className="text-zinc-400 mt-2">Registros históricos e momentos de irmandade em Aparecida.</p>
                   </header>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {galleryImages.map((src, i) => (
-                      <div key={i} className="aspect-square bg-zinc-900 rounded-3xl overflow-hidden border border-zinc-800 group relative shadow-lg">
-                        <img 
-                          src={src} 
-                          className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-700 group-hover:scale-110" 
-                          alt={`LAMA Gallery ${i}`} 
-                        />
-                        <div className="absolute inset-0 bg-yellow-500/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+
+                  <div className="relative bg-zinc-900 rounded-[3rem] border border-zinc-800 overflow-hidden min-h-[500px] flex flex-col items-center justify-center p-12 text-center shadow-2xl">
+                    <div className="absolute inset-0 opacity-10 grayscale">
+                      <img src="https://images.unsplash.com/photo-1558981403-c5f91cbba527?q=80&w=2070&auto=format&fit=crop" alt="" className="w-full h-full object-cover" />
+                    </div>
+                    
+                    <div className="relative z-10 space-y-8 max-w-xl">
+                      <div className="bg-yellow-500/10 p-6 rounded-full w-fit mx-auto border border-yellow-500/20">
+                        <ImageIcon size={64} className="text-yellow-500" />
                       </div>
-                    ))}
+                      <h3 className="text-3xl font-oswald font-bold text-white uppercase italic">Explore Nossa História no <span className="text-blue-500">Facebook</span></h3>
+                      <p className="text-zinc-400 text-lg leading-relaxed">
+                        Mantemos nossa galeria oficial atualizada em nossa página do Facebook. Clique no botão abaixo para ver as fotos das nossas últimas rotas, eventos e encontros.
+                      </p>
+                      <a 
+                        href="https://www.facebook.com/lamaaparecidabr/photos" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-3 bg-yellow-500 hover:bg-yellow-600 text-black px-10 py-5 rounded-2xl font-bold text-lg transition-all transform hover:scale-105 shadow-xl shadow-yellow-500/20 uppercase tracking-widest"
+                      >
+                        ACESSAR GALERIA OFICIAL <ExternalLink size={20} />
+                      </a>
+                    </div>
                   </div>
                 </div>
               )}
