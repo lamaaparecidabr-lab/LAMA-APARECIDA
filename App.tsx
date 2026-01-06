@@ -22,7 +22,7 @@ const iconicRoutes: Route[] = [
     difficulty: 'Lendária',
     points: [],
     status: 'planejada',
-    thumbnail: 'https://destinosnotaveis.com.br/wp-content/uploads/2022/08/Serra_rio_do_rastro-1024x640.jpg',
+    thumbnail: 'https://www.viajali.com.br/wp-content/uploads/2017/12/serra-do-rio-do-rastro-10.jpg',
     isOfficial: true
   },
   {
