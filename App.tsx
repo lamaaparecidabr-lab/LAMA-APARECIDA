@@ -23,7 +23,7 @@ const iconicRoutes: Route[] = [
     difficulty: 'Lendária',
     points: [],
     status: 'planejada',
-    thumbnail: 'https://www.viajali.com.br/wp-content/uploads/2017/12/serra-do-rio-do-rastro-10.jpg',
+    thumbnail: 'https://www.viajali.com.br/wp-content/uploads/2017/12/serra-rio-do-rastro.jpg',
     isOfficial: true
   },
   {
@@ -99,19 +99,14 @@ const App: React.FC = () => {
   useEffect(() => {
     let mounted = true;
 
-    // Timer de segurança estendido para garantir que o radar nunca trave
     const safetyTimer = setTimeout(() => {
       if (mounted && isLoading) {
         setIsLoading(false);
       }
     }, 10000);
 
-    // Confiamos exclusivamente no onAuthStateChange para gerenciar a sessão
-    // Ele dispara automaticamente no mount com a sessão atual (se existir)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
-      
-      console.log("Auth Event:", event);
       
       if (session?.user) {
         await syncUserData(session.user);
@@ -141,7 +136,6 @@ const App: React.FC = () => {
     syncInProgress.current = true;
     
     try {
-      // Passo 1: Definir dados básicos para liberar a interface imediatamente
       const basicUserData: User = {
         id: authUser.id,
         name: authUser.user_metadata?.name || 'Membro L.A.M.A.',
@@ -153,7 +147,6 @@ const App: React.FC = () => {
       setUser(basicUserData);
       setIsAuthenticated(true);
 
-      // Passo 2: Tentar carregar dados enriquecidos do perfil
       const { data: profileData, error } = await supabase
         .from('profiles')
         .select('*')
@@ -248,7 +241,6 @@ const App: React.FC = () => {
         alert("Acesso negado: " + error.message);
         setIsLoading(false);
       }
-      // O onAuthStateChange cuidará do resto se o login for bem-sucedido
     } catch (err: any) {
       alert("Erro inesperado no login.");
       setIsLoading(false);
@@ -575,7 +567,14 @@ const App: React.FC = () => {
                     <h2 className="text-4xl font-oswald font-black text-white italic uppercase tracking-tighter">Mural de <span className="text-yellow-500">Missões</span></h2>
                   </header>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="flex flex-col items-center justify-center gap-2">
+                    <div className="flex items-center gap-2">
+                      <Cake className="text-pink-500" size={22} />
+                      <h3 className="text-xl font-oswald font-black text-white uppercase italic tracking-widest">Aniversários</h3>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-0">
                     <div className="bg-zinc-950 p-8 rounded-[2.5rem] border border-zinc-900 shadow-xl relative overflow-hidden group">
                       <div className="absolute top-0 right-0 p-6 text-yellow-500/10 group-hover:text-yellow-500/20 transition-colors"><Cake size={80} /></div>
                       <h3 className="text-xl font-oswald font-black text-white uppercase italic mb-6 flex items-center gap-3">
@@ -623,22 +622,24 @@ const App: React.FC = () => {
 
                   <div className="space-y-8">
                     <h3 className="text-2xl font-oswald font-black text-white uppercase italic tracking-widest flex items-center gap-3">
-                      <Map size={24} className="text-red-600" /> Nossas Missões
+                      <Map size={24} className="text-red-600" /> Minhas Missões
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                      {routes.length > 0 ? routes.map(route => (
-                        <div key={route.id} className="bg-zinc-950 rounded-[2.5rem] border border-zinc-900 overflow-hidden shadow-2xl group flex flex-col">
-                          <MapView points={route.points} className="h-48 grayscale group-hover:grayscale-0 transition-all duration-500" />
-                          <div className="p-8">
-                            <h3 className="text-2xl font-oswald font-black text-white uppercase italic truncate">{route.title}</h3>
-                            <div className="flex items-center justify-between mt-4 text-zinc-500 text-[10px] font-bold uppercase tracking-widest">
-                              <span>{route.distance} Rodados</span>
-                              <span className="text-zinc-700 italic">{route.difficulty}</span>
+                      {routes.filter(r => r.user_id === user?.id).length > 0 ? (
+                        routes.filter(r => r.user_id === user?.id).map(route => (
+                          <div key={route.id} className="bg-zinc-950 rounded-[2.5rem] border border-zinc-900 overflow-hidden shadow-2xl group flex flex-col">
+                            <MapView points={route.points} className="h-48 grayscale group-hover:grayscale-0 transition-all duration-500" />
+                            <div className="p-8">
+                              <h3 className="text-2xl font-oswald font-black text-white uppercase italic truncate">{route.title}</h3>
+                              <div className="flex items-center justify-between mt-4 text-zinc-500 text-[10px] font-bold uppercase tracking-widest">
+                                <span>{route.distance} Rodados</span>
+                                <span className="text-zinc-700 italic">{route.difficulty}</span>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      )) : (
-                        <div className="col-span-full py-20 text-center text-zinc-700 uppercase italic text-sm">Nenhuma missão no horizonte...</div>
+                        ))
+                      ) : (
+                        <div className="col-span-full py-20 text-center text-zinc-700 uppercase italic text-sm">Nenhuma missão gravada por você ainda...</div>
                       )}
                     </div>
                   </div>
