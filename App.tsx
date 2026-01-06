@@ -8,7 +8,7 @@ import { Bike, Compass, Users, Calendar, Trophy, Image as ImageIcon, ExternalLin
 import { getRouteInsights } from './services/geminiService';
 import { supabase } from './services/supabaseClient';
 
-const LAMA_LOGO_URL = 'https://github.com/lamaaparecidabr-lab/LAMA-APARECIDA/blob/main/components/logo.jpg?raw=true';
+const LAMA_LOGO_URL = 'https://raw.githubusercontent.com/lamaaparecidabr-lab/LAMA-APARECIDA/411b86094f7e7539386b7340eb607162cae150b5/components/logo.jpg';
 const YOUTUBE_ID = '-VzuMRXCizo';
 const CLUBHOUSE_COORDS = { lat: -16.7908906, lng: -49.2311547 };
 const CLUBHOUSE_ADDRESS = "R. X-011 - Sítios Santa Luzia, Aparecida de Goiânia - GO, 74922-570";
@@ -569,52 +569,52 @@ const App: React.FC = () => {
 
                   <div className="flex flex-col items-center justify-center gap-2">
                     <div className="flex items-center gap-2">
-                      <Cake className="text-pink-500" size={22} />
-                      <h3 className="text-xl font-oswald font-black text-white uppercase italic tracking-widest">Aniversários</h3>
+                      <Cake className="text-pink-500" size={18} />
+                      <h3 className="text-lg font-oswald font-black text-white uppercase italic tracking-widest">Aniversários</h3>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-0">
-                    <div className="bg-zinc-950 p-8 rounded-[2.5rem] border border-zinc-900 shadow-xl relative overflow-hidden group">
-                      <div className="absolute top-0 right-0 p-6 text-yellow-500/10 group-hover:text-yellow-500/20 transition-colors"><Cake size={80} /></div>
-                      <h3 className="text-xl font-oswald font-black text-white uppercase italic mb-6 flex items-center gap-3">
-                        <span className="w-2 h-6 bg-yellow-500 rounded-full"></span> Mês Atual
+                    <div className="bg-zinc-950 p-6 rounded-[2rem] border border-zinc-900 shadow-xl relative overflow-hidden group">
+                      <div className="absolute top-0 right-0 p-4 text-yellow-500/10 group-hover:text-yellow-500/20 transition-colors"><Cake size={60} /></div>
+                      <h3 className="text-lg font-oswald font-black text-white uppercase italic mb-4 flex items-center gap-2">
+                        <span className="w-1.5 h-5 bg-yellow-500 rounded-full"></span> Mês Atual
                       </h3>
-                      <div className="space-y-4">
+                      <div className="space-y-3">
                         {getBirthdaysByMonth(new Date().getUTCMonth()).length > 0 ? (
                           getBirthdaysByMonth(new Date().getUTCMonth()).map(member => (
-                            <div key={member.id} className="flex items-center justify-between border-b border-zinc-900 pb-3">
-                              <div className="flex items-center gap-3">
-                                <img src={member.avatar} className="w-8 h-8 rounded-lg object-cover" alt="" />
-                                <span className="text-sm font-bold text-zinc-300">{member.name}</span>
+                            <div key={member.id} className="flex items-center justify-between border-b border-zinc-900 pb-2">
+                              <div className="flex items-center gap-2">
+                                <img src={member.avatar} className="w-6 h-6 rounded-lg object-cover" alt="" />
+                                <span className="text-xs font-bold text-zinc-300">{member.name}</span>
                               </div>
-                              <span className="text-xs font-black text-yellow-500 font-mono italic">{new Date(member.birthDate!).getUTCDate().toString().padStart(2, '0')}</span>
+                              <span className="text-[10px] font-black text-yellow-500 font-mono italic">{new Date(member.birthDate!).getUTCDate().toString().padStart(2, '0')}</span>
                             </div>
                           ))
                         ) : (
-                          <p className="text-xs text-zinc-600 italic uppercase">Sem aniversários este mês</p>
+                          <p className="text-[10px] text-zinc-600 italic uppercase">Sem aniversários este mês</p>
                         )}
                       </div>
                     </div>
 
-                    <div className="bg-zinc-950 p-8 rounded-[2.5rem] border border-zinc-900 shadow-xl relative overflow-hidden group">
-                      <div className="absolute top-0 right-0 p-6 text-zinc-500/10 group-hover:text-zinc-500/20 transition-colors"><Star size={80} /></div>
-                      <h3 className="text-xl font-oswald font-black text-white uppercase italic mb-6 flex items-center gap-3">
-                        <span className="w-2 h-6 bg-zinc-700 rounded-full"></span> Próximo Mês
+                    <div className="bg-zinc-950 p-6 rounded-[2rem] border border-zinc-900 shadow-xl relative overflow-hidden group">
+                      <div className="absolute top-0 right-0 p-4 text-zinc-500/10 group-hover:text-zinc-500/20 transition-colors"><Star size={60} /></div>
+                      <h3 className="text-lg font-oswald font-black text-white uppercase italic mb-4 flex items-center gap-2">
+                        <span className="w-1.5 h-5 bg-zinc-700 rounded-full"></span> Próximo Mês
                       </h3>
-                      <div className="space-y-4">
+                      <div className="space-y-3">
                         {getBirthdaysByMonth((new Date().getUTCMonth() + 1) % 12).length > 0 ? (
                           getBirthdaysByMonth((new Date().getUTCMonth() + 1) % 12).map(member => (
-                            <div key={member.id} className="flex items-center justify-between border-b border-zinc-900 pb-3">
-                              <div className="flex items-center gap-3">
-                                <img src={member.avatar} className="w-8 h-8 rounded-lg object-cover" alt="" />
-                                <span className="text-sm font-bold text-zinc-400">{member.name}</span>
+                            <div key={member.id} className="flex items-center justify-between border-b border-zinc-900 pb-2">
+                              <div className="flex items-center gap-2">
+                                <img src={member.avatar} className="w-6 h-6 rounded-lg object-cover" alt="" />
+                                <span className="text-xs font-bold text-zinc-400">{member.name}</span>
                               </div>
-                              <span className="text-xs font-black text-zinc-500 font-mono italic">{new Date(member.birthDate!).getUTCDate().toString().padStart(2, '0')}</span>
+                              <span className="text-[10px] font-black text-zinc-500 font-mono italic">{new Date(member.birthDate!).getUTCDate().toString().padStart(2, '0')}</span>
                             </div>
                           ))
                         ) : (
-                          <p className="text-xs text-zinc-600 italic uppercase">Sem aniversários no próximo mês</p>
+                          <p className="text-[10px] text-zinc-600 italic uppercase">Sem aniversários no próximo mês</p>
                         )}
                       </div>
                     </div>
