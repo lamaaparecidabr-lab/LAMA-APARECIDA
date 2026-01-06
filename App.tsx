@@ -8,7 +8,7 @@ import { Bike, Compass, Users, Calendar, Trophy, Image as ImageIcon, ExternalLin
 import { getRouteInsights } from './services/geminiService';
 import { supabase } from './services/supabaseClient';
 
-const LAMA_LOGO_URL = 'https://raw.githubusercontent.com/lamaaparecidabr-lab/LAMA-APARECIDA/411b86094f7e7539386b7340eb607162cae150b5/components/logo.jpg';
+const LAMA_LOGO_URL = 'https://raw.githubusercontent.com/lamaaparecidabr-lab/LAMA-APARECIDA/main/components/logo.jpg';
 const YOUTUBE_ID = '-VzuMRXCizo';
 const CLUBHOUSE_COORDS = { lat: -16.7908906, lng: -49.2311547 };
 const CLUBHOUSE_ADDRESS = "R. X-011 - Sítios Santa Luzia, Aparecida de Goiânia - GO, 74922-570";
