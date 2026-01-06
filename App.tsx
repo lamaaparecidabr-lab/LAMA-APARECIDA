@@ -23,7 +23,7 @@ const iconicRoutes: Route[] = [
     difficulty: 'Lendária',
     points: [],
     status: 'planejada',
-    thumbnail: 'https://www.viajali.com.br/wp-content/uploads/2017/12/serra-rio-do-rastro.jpg',
+    thumbnail: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/09/3c/e7/c9/serra-do-rio-do-rastro.jpg?w=600&h=400&s=1',
     isOfficial: true
   },
   {
