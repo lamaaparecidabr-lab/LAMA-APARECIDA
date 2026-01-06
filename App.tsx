@@ -321,6 +321,7 @@ const App: React.FC = () => {
   const handleSaveRoute = async (newRoute: Route) => {
     if (!user) return;
     
+    // Fix: replaced undefined reference 'r.thumbnail' with 'newRoute.thumbnail'
     const { error } = await supabase.from('routes').insert([{
       id: newRoute.id,
       user_id: user.id,
@@ -372,14 +373,14 @@ const App: React.FC = () => {
   const toggleMute = () => {
     if (videoRef.current?.contentWindow) {
       const command = isMuted ? 'unMute' : 'mute';
-      videoRef.current.contentWindow.postMessage(JSON.stringify({ 
+      videoRef.current.window.postMessage(JSON.stringify({ 
         event: 'command', 
         func: command, 
         args: [] 
       }), '*');
       
       if (isMuted) {
-        videoRef.current.contentWindow.postMessage(JSON.stringify({ 
+        videoRef.current.window.postMessage(JSON.stringify({ 
           event: 'command', 
           func: 'setVolume', 
           args: [100] 
@@ -896,6 +897,7 @@ const App: React.FC = () => {
                             <th className="pb-4 px-4 text-[10px] font-black uppercase tracking-widest text-zinc-600">Membro</th>
                             <th className="pb-4 px-4 text-[10px] font-black uppercase tracking-widest text-zinc-600">Nascimento</th>
                             <th className="pb-4 px-4 text-[10px] font-black uppercase tracking-widest text-zinc-600">Moto Principal</th>
+                            <th className="pb-4 px-4 text-[10px] font-black uppercase tracking-widest text-zinc-600">Associação</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-zinc-900/50">
@@ -906,7 +908,6 @@ const App: React.FC = () => {
                                   <img src={member.avatar} className="w-12 h-12 rounded-2xl border border-zinc-800 object-cover shadow-lg" alt={member.name} />
                                   <div className="flex flex-col">
                                     <span className="font-bold text-white uppercase text-sm tracking-tight">{member.name}</span>
-                                    <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest">{member.associationType || 'ASSOCIADO'}</span>
                                   </div>
                                 </div>
                               </td>
@@ -922,6 +923,13 @@ const App: React.FC = () => {
                                 <div className="flex items-center gap-3">
                                   <Bike size={16} className="text-zinc-600" />
                                   <span className="font-bold text-zinc-400 text-sm italic">{member.bikeModel || 'Não informado'}</span>
+                                </div>
+                              </td>
+                              <td className="py-6 px-4">
+                                <div className="flex items-center">
+                                  <span className="bg-zinc-900 text-zinc-400 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border border-zinc-800">
+                                    {member.associationType || 'ASSOCIADO'}
+                                  </span>
                                 </div>
                               </td>
                             </tr>
