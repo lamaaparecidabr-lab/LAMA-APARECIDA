@@ -61,6 +61,21 @@ const iconicRoutes: Route[] = [
   }
 ];
 
+const galleryImages = [
+  "https://images.unsplash.com/photo-1558981806-ec527fa84c39?q=80&w=800",
+  "https://images.unsplash.com/photo-1558981285-6f0c94958bb6?q=80&w=800",
+  "https://images.unsplash.com/photo-1558981359-219d6364c9c8?q=80&w=800",
+  "https://images.unsplash.com/photo-1558981403-c5f91cbba527?q=80&w=800",
+  "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?q=80&w=800",
+  "https://images.unsplash.com/photo-1440723238343-9170993e81b4?q=80&w=800",
+  "https://images.unsplash.com/photo-1591637333184-19aa84b3e01f?q=80&w=800",
+  "https://images.unsplash.com/photo-1558981424-86a2f127d817?q=80&w=800",
+  "https://images.unsplash.com/photo-1599819811279-d5ad9cccf838?q=80&w=800",
+  "https://images.unsplash.com/photo-1558981001-792f6c0d5068?q=80&w=800",
+  "https://images.unsplash.com/photo-1558981408-db0ecd8a1ee1?q=80&w=800",
+  "https://images.unsplash.com/photo-1558981396-5f0d0325ed91?q=80&w=800"
+];
+
 const ADMIN_EMAIL = 'lama.aparecidabr@gmail.com';
 
 const App: React.FC = () => {
@@ -88,7 +103,7 @@ const App: React.FC = () => {
       if (mounted && isLoading) {
         setIsLoading(false);
       }
-    }, 8000);
+    }, 5000);
 
     const checkInitialSession = async () => {
       try {
@@ -101,6 +116,7 @@ const App: React.FC = () => {
           }
         }
       } catch (err) {
+        console.error("Erro no checkInitialSession:", err);
         if (mounted) setIsLoading(false);
       }
     };
@@ -109,14 +125,11 @@ const App: React.FC = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
-
       if (session?.user) {
         await syncUserData(session.user);
       } else {
         setIsAuthenticated(false);
         setUser(null);
-        setRoutes([]);
-        setAllMembers([]);
         setIsLoading(false);
       }
     });
@@ -362,10 +375,14 @@ const App: React.FC = () => {
     return `${day}/${month}/${year}`;
   };
 
-  const getBirthdays = (offset: number) => {
-    const targetMonth = (new Date().getMonth() + offset) % 12;
-    return allMembers.filter(m => m.birthDate && new Date(m.birthDate).getUTCMonth() === targetMonth)
-      .sort((a, b) => new Date(a.birthDate!).getUTCDate() - new Date(b.birthDate!).getUTCDate());
+  const getBirthdaysByMonth = (targetMonth: number) => {
+    return allMembers.filter(m => {
+      if (!m.birthDate) return false;
+      const birthMonth = new Date(m.birthDate).getUTCMonth();
+      return birthMonth === targetMonth;
+    }).sort((a, b) => {
+      return new Date(a.birthDate!).getUTCDate() - new Date(b.birthDate!).getUTCDate();
+    });
   };
 
   const getSortedMembersByBirthMonth = () => {
@@ -379,7 +396,16 @@ const App: React.FC = () => {
     });
   };
 
-  const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+  const getDifficultyStyles = (diff: string) => {
+    switch (diff) {
+      case 'Fácil': return 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20';
+      case 'Moderada': return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
+      case 'Difícil': return 'bg-orange-500/10 text-orange-500 border-orange-500/20';
+      case 'Lendária': return 'bg-red-500/10 text-red-500 border-red-500/20';
+      default: return 'bg-zinc-800 text-zinc-400 border-zinc-700';
+    }
+  };
+
   const isAdmin = user?.role === 'admin' || user?.email === ADMIN_EMAIL;
 
   if (isLoading) return (
@@ -490,7 +516,7 @@ const App: React.FC = () => {
                           </div>
                         </div>
                         <div className="flex gap-4">
-                          <button type="submit" disabled={isUpdating} className="flex-1 bg-yellow-500 text-black py-5 rounded-2xl font-black uppercase flex items-center justify-center gap-2">{isUpdating ? <Loader2 className="animate-spin" size={20} /> : <><Save size={20} /> Salvar</>}</button>
+                          <button type="submit" disabled={isUpdating} className="flex-1 bg-yellow-500 text-black py-5 rounded-2xl font-black uppercase flex items-center justify-center gap-2">{isUpdating ? <Loader2 className="animate-spin" size={20} /> : <><Save size={20} /> Salvar Alterações</>}</button>
                           <button type="button" onClick={() => setIsEditingProfile(false)} className="flex-1 bg-zinc-900 border border-zinc-800 text-zinc-400 py-5 rounded-2xl font-black uppercase">Cancelar</button>
                         </div>
                       </form>
@@ -521,7 +547,7 @@ const App: React.FC = () => {
                             </div>
                             <div className="bg-zinc-900/60 border border-zinc-800/80 p-6 md:p-8 rounded-[2rem] flex flex-col hover:border-blue-500/30 transition-all group/card text-left">
                                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 mb-2">Associação</span>
-                                <div className="flex items-center gap-4"><Briefcase size={24} className="text-blue-500" /><span className="font-bold text-white text-lg italic uppercase">{user?.associationType || 'ASSOCIADO'}</span></div>
+                                <div className="flex items-center gap-4"><Briefcase size={24} className="text-blue-500" /><span className="font-bold text-white text-lg italic uppercase">{user?.associationType || 'Não informado'}</span></div>
                             </div>
                           </div>
                           <div className="pt-4 flex flex-col sm:flex-row gap-4">
@@ -536,29 +562,138 @@ const App: React.FC = () => {
               )}
 
               {currentView === 'tracking' && <RouteTracker onSave={handleSaveRoute} />}
+              
               {currentView === 'my-routes' && (
-                <div className="space-y-16">
-                  <header className="flex items-center gap-4"><div className="w-2 h-10 bg-red-600 rounded-full"></div><h2 className="text-4xl font-oswald font-black text-white italic uppercase tracking-tighter">Mural de <span className="text-yellow-500">Missões</span></h2></header>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {routes.length > 0 ? routes.map(route => (
-                      <div key={route.id} className="bg-zinc-950 rounded-[2.5rem] border border-zinc-900 overflow-hidden shadow-2xl group flex flex-col">
-                        <MapView points={route.points} className="h-48 grayscale group-hover:grayscale-0 transition-all duration-500" />
-                        <div className="p-8"><h3 className="text-2xl font-oswald font-black text-white uppercase italic truncate">{route.title}</h3><div className="flex items-center justify-between mt-4 text-zinc-500 text-[10px] font-bold uppercase tracking-widest"><span>{route.distance} Rodados</span><button onClick={() => fetchInsights(route)} className="p-2 bg-zinc-900 rounded-lg text-yellow-500 hover:bg-yellow-500 hover:text-black transition-all"><Zap size={14}/></button></div></div>
+                <div className="space-y-16 animate-in fade-in slide-in-from-bottom-8 duration-700">
+                  <header className="flex items-center gap-4">
+                    <div className="w-2 h-10 bg-red-600 rounded-full"></div>
+                    <h2 className="text-4xl font-oswald font-black text-white italic uppercase tracking-tighter">Mural de <span className="text-yellow-500">Missões</span></h2>
+                  </header>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="bg-zinc-950 p-8 rounded-[2.5rem] border border-zinc-900 shadow-xl relative overflow-hidden group">
+                      <div className="absolute top-0 right-0 p-6 text-yellow-500/10 group-hover:text-yellow-500/20 transition-colors"><Cake size={80} /></div>
+                      <h3 className="text-xl font-oswald font-black text-white uppercase italic mb-6 flex items-center gap-3">
+                        <span className="w-2 h-6 bg-yellow-500 rounded-full"></span> Mês Atual
+                      </h3>
+                      <div className="space-y-4">
+                        {getBirthdaysByMonth(new Date().getUTCMonth()).length > 0 ? (
+                          getBirthdaysByMonth(new Date().getUTCMonth()).map(member => (
+                            <div key={member.id} className="flex items-center justify-between border-b border-zinc-900 pb-3">
+                              <div className="flex items-center gap-3">
+                                <img src={member.avatar} className="w-8 h-8 rounded-lg object-cover" alt="" />
+                                <span className="text-sm font-bold text-zinc-300">{member.name}</span>
+                              </div>
+                              <span className="text-xs font-black text-yellow-500 font-mono italic">{new Date(member.birthDate!).getUTCDate().toString().padStart(2, '0')}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-xs text-zinc-600 italic uppercase">Sem aniversários este mês</p>
+                        )}
                       </div>
-                    )) : <div className="col-span-full py-32 text-center text-zinc-600 uppercase italic">Nenhuma missão no horizonte...</div>}
+                    </div>
+
+                    <div className="bg-zinc-950 p-8 rounded-[2.5rem] border border-zinc-900 shadow-xl relative overflow-hidden group">
+                      <div className="absolute top-0 right-0 p-6 text-zinc-500/10 group-hover:text-zinc-500/20 transition-colors"><Star size={80} /></div>
+                      <h3 className="text-xl font-oswald font-black text-white uppercase italic mb-6 flex items-center gap-3">
+                        <span className="w-2 h-6 bg-zinc-700 rounded-full"></span> Próximo Mês
+                      </h3>
+                      <div className="space-y-4">
+                        {getBirthdaysByMonth((new Date().getUTCMonth() + 1) % 12).length > 0 ? (
+                          getBirthdaysByMonth((new Date().getUTCMonth() + 1) % 12).map(member => (
+                            <div key={member.id} className="flex items-center justify-between border-b border-zinc-900 pb-3">
+                              <div className="flex items-center gap-3">
+                                <img src={member.avatar} className="w-8 h-8 rounded-lg object-cover" alt="" />
+                                <span className="text-sm font-bold text-zinc-400">{member.name}</span>
+                              </div>
+                              <span className="text-xs font-black text-zinc-500 font-mono italic">{new Date(member.birthDate!).getUTCDate().toString().padStart(2, '0')}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-xs text-zinc-600 italic uppercase">Sem aniversários no próximo mês</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-8">
+                    <h3 className="text-2xl font-oswald font-black text-white uppercase italic tracking-widest flex items-center gap-3">
+                      <Map size={24} className="text-red-600" /> Nossas Missões
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                      {routes.length > 0 ? routes.map(route => (
+                        <div key={route.id} className="bg-zinc-950 rounded-[2.5rem] border border-zinc-900 overflow-hidden shadow-2xl group flex flex-col">
+                          <MapView points={route.points} className="h-48 grayscale group-hover:grayscale-0 transition-all duration-500" />
+                          <div className="p-8">
+                            <h3 className="text-2xl font-oswald font-black text-white uppercase italic truncate">{route.title}</h3>
+                            <div className="flex items-center justify-between mt-4 text-zinc-500 text-[10px] font-bold uppercase tracking-widest">
+                              <span>{route.distance} Rodados</span>
+                              <span className="text-zinc-700 italic">{route.difficulty}</span>
+                            </div>
+                          </div>
+                        </div>
+                      )) : (
+                        <div className="col-span-full py-20 text-center text-zinc-700 uppercase italic text-sm">Nenhuma missão no horizonte...</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {currentView === 'gallery' && (
+                <div className="space-y-12 animate-in fade-in duration-700">
+                  <header className="flex items-center gap-4">
+                    <div className="w-2 h-10 bg-yellow-500 rounded-full"></div>
+                    <h2 className="text-5xl font-oswald font-black text-white italic uppercase tracking-tighter">Galeria <span className="text-yellow-500">L.A.M.A.</span></h2>
+                  </header>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {galleryImages.map((src, i) => (
+                      <div key={i} className="aspect-square bg-zinc-900 rounded-3xl overflow-hidden border border-zinc-800 group relative shadow-lg">
+                        <img 
+                          src={src} 
+                          className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-700 group-hover:scale-110" 
+                          alt={`LAMA Gallery ${i}`} 
+                        />
+                        <div className="absolute inset-0 bg-yellow-500/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
 
               {currentView === 'explorer' && (
-                <div className="space-y-12">
-                  <header className="flex items-center gap-4"><div className="w-2 h-10 bg-yellow-500 rounded-full"></div><h2 className="text-5xl font-oswald font-black text-white italic uppercase tracking-tighter">Rotas <span className="text-yellow-500">Icônicas</span></h2></header>
+                <div className="space-y-12 animate-in fade-in duration-700">
+                  <header className="flex items-center gap-4">
+                    <div className="w-2 h-10 bg-yellow-500 rounded-full"></div>
+                    <h2 className="text-5xl font-oswald font-black text-white italic uppercase tracking-tighter">Rotas <span className="text-yellow-500">Icônicas</span></h2>
+                  </header>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     {iconicRoutes.map(route => (
                       <div key={route.id} className="bg-zinc-900/50 rounded-[3rem] overflow-hidden border border-zinc-800 hover:border-yellow-500/30 transition-all group shadow-2xl flex flex-col relative">
-                        {route.isOfficial && <div className="absolute top-6 right-6 z-20 transform rotate-12 drop-shadow-2xl"><div className="border-[5px] border-yellow-500 text-yellow-500 px-6 py-2 rounded-2xl font-oswald font-black uppercase text-[12px] bg-black/95">OFICIAL L.A.M.A.</div></div>}
-                        <div className="h-64 relative overflow-hidden"><img src={route.thumbnail} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 opacity-80" alt={route.title} /></div>
-                        <div className="p-10 flex-1 flex flex-col space-y-6"><h3 className="text-3xl font-oswald font-black text-white uppercase italic tracking-tighter">{route.title}</h3><p className="text-zinc-500 text-sm leading-relaxed">{route.description}</p><button onClick={() => fetchInsights(route)} className="w-full bg-zinc-800 hover:bg-yellow-500 hover:text-black text-white py-5 rounded-2xl font-black uppercase text-[10px] transition-all flex items-center justify-center gap-3"><Zap size={16} /> Briefing</button></div>
+                        {route.isOfficial && (
+                          <div className="absolute top-6 right-6 z-20 transform rotate-12 drop-shadow-2xl">
+                            <div className="border-[5px] border-yellow-500 text-yellow-500 px-6 py-2 rounded-2xl font-oswald font-black uppercase text-[12px] bg-black/95">OFICIAL L.A.M.A.</div>
+                          </div>
+                        )}
+                        <div className="h-64 relative overflow-hidden">
+                          <img src={route.thumbnail} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 opacity-80" alt={route.title} />
+                        </div>
+                        <div className="p-10 flex-1 flex flex-col space-y-6">
+                          <div className="flex items-start justify-between gap-4">
+                            <h3 className="text-3xl font-oswald font-black text-white uppercase italic tracking-tighter flex-1">{route.title}</h3>
+                            <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border shrink-0 ${getDifficultyStyles(route.difficulty)}`}>
+                              {route.difficulty}
+                            </span>
+                          </div>
+                          <p className="text-zinc-500 text-sm leading-relaxed">{route.description}</p>
+                          <div className="flex items-center gap-2 text-zinc-600 font-bold text-[10px] uppercase tracking-widest">
+                            <Navigation size={12} className="text-yellow-500" />
+                            <span>Extensão: {route.distance}</span>
+                          </div>
+                          <button onClick={() => fetchInsights(route)} className="w-full bg-zinc-800 hover:bg-yellow-500 hover:text-black text-white py-5 rounded-2xl font-black uppercase text-[10px] transition-all flex items-center justify-center gap-3">
+                            <Zap size={16} /> Briefing
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -592,7 +727,7 @@ const App: React.FC = () => {
                         <thead>
                           <tr className="border-b border-zinc-900">
                             <th className="pb-4 px-4 text-[10px] font-black uppercase tracking-widest text-zinc-600">Nome Completo</th>
-                            <th className="pb-4 px-4 text-[10px] font-black uppercase tracking-widest text-zinc-600">Nascimento</th>
+                            <th className="pb-4 px-4 text-[10px] font-black uppercase tracking-widest text-zinc-600">Data de Nascimento</th>
                             <th className="pb-4 px-4 text-[10px] font-black uppercase tracking-widest text-zinc-600">Moto</th>
                             <th className="pb-4 px-4 text-[10px] font-black uppercase tracking-widest text-zinc-600">Associação</th>
                           </tr>
