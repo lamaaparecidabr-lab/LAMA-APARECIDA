@@ -1,10 +1,16 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { RouteTracker } from './components/RouteTracker';
 import { MapView } from './components/MapView';
 import { View, User, Route } from './types';
-import { Bike, Compass, Users, Calendar, Trophy, Image as ImageIcon, ExternalLink, Shield, Gauge, ChevronRight, Zap, Map, Volume2, VolumeX, Maximize2, MapPin, Navigation, Lock, Radio, Award, Star, Loader2, Edit2, Save, X, Camera, UserPlus, Key, Trash2, CheckCircle2, Cake, Upload, MessageCircle, Briefcase } from 'lucide-react';
+import { 
+  Bike, Compass, Image as ImageIcon, Shield, Map, 
+  MapPin, Radio, Award, Loader2, Save, X, Camera, 
+  Zap, MessageCircle, Briefcase, Info, Cake, 
+  Volume2, VolumeX, Maximize2, Navigation, ChevronRight,
+  Star, Users, ExternalLink, Upload
+} from 'lucide-react';
 import { getRouteInsights } from './services/geminiService';
 import { supabase } from './services/supabaseClient';
 
@@ -71,8 +77,7 @@ const galleryImages = [
   "https://images.unsplash.com/photo-1591637333184-19aa84b3e01f?q=80&w=800",
   "https://images.unsplash.com/photo-1558981424-86a2f127d817?q=80&w=800",
   "https://images.unsplash.com/photo-15599819811279-d5ad9cccf838?q=80&w=800",
-  "https://images.unsplash.com/photo-1558981001-792f6c0d5068?q=80&w=800",
-  "https://images.unsplash.com/photo-1558981408-db0ecd8a1ee1?q=80&w=800",
+  "https://images.unsplash.com/photo-1558981396-5f0d0325ed91?q=80&w=800",
   "https://images.unsplash.com/photo-1558981396-5f0d0325ed91?q=80&w=800"
 ];
 
@@ -89,7 +94,7 @@ const App: React.FC = () => {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
-  const [editForm, setEditForm] = useState({ name: '', bikeModel: '', avatar: '', birthDate: '', associationType: '' as any });
+  const [editForm, setEditForm] = useState<Partial<User>>({ name: '', bikeModel: '', avatar: '', birthDate: '', associationType: undefined });
   const [isMuted, setIsMuted] = useState(true);
   const videoRef = useRef<HTMLIFrameElement>(null);
   const videoContainerRef = useRef<HTMLDivElement>(null);
@@ -105,7 +110,7 @@ const App: React.FC = () => {
       }
     }, 10000);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (!mounted) return;
       
       if (session?.user) {
@@ -160,6 +165,7 @@ const App: React.FC = () => {
           bikeModel: profileData.bike_model || 'Não informado',
           avatar: profileData.avatar_url || basicUserData.avatar,
           birthDate: profileData.birth_date || '',
+          // Use undefined explicitly instead of empty string to satisfy union type
           associationType: profileData.association_type || undefined,
           role: profileData.role || basicUserData.role
         };
@@ -170,7 +176,8 @@ const App: React.FC = () => {
           bikeModel: fullUserData.bikeModel || '',
           avatar: fullUserData.avatar || '',
           birthDate: fullUserData.birthDate || '',
-          associationType: fullUserData.associationType || ''
+          // Fixed line 177: Remove incorrect empty string fallback for union type
+          associationType: fullUserData.associationType
         });
       }
     } catch (err) {
@@ -341,11 +348,18 @@ const App: React.FC = () => {
   };
 
   const handleLogout = async () => {
-    setIsLoading(true);
     try {
+      // Faz o logout no Supabase primeiro
       await supabase.auth.signOut();
+      
+      // Limpa estados localmente imediatamente para evitar looping de loading
+      setIsAuthenticated(false);
+      setUser(null);
+      setIsLoading(false);
+      setView('home');
     } catch (err) {
       console.error("Erro no logout:", err);
+      // Fallback: garante que o loading suma em caso de erro
       setIsLoading(false);
     }
   };
@@ -496,7 +510,7 @@ const App: React.FC = () => {
                           <div className="space-y-2"><label className="text-[9px] font-bold uppercase tracking-widest text-zinc-600 ml-4">Data de Nascimento</label><input type="date" className="w-full bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-2xl outline-none focus:border-yellow-500/50" value={editForm.birthDate} onChange={e => setEditForm({...editForm, birthDate: e.target.value})} /></div>
                           <div className="space-y-2">
                             <label className="text-[9px] font-bold uppercase tracking-widest text-zinc-600 ml-4">Tipo de Associação</label>
-                            <select className="w-full bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-2xl outline-none focus:border-yellow-500/50" value={editForm.associationType} onChange={e => setEditForm({...editForm, associationType: e.target.value as any})}>
+                            <select className="w-full bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-2xl outline-none focus:border-yellow-500/50" value={editForm.associationType || ''} onChange={e => setEditForm({...editForm, associationType: (e.target.value || undefined) as any})}>
                               <option value="">Selecione...</option>
                               <option value="PILOTO">PILOTO</option>
                               <option value="ESPOSA">ESPOSA</option>
@@ -779,4 +793,3 @@ const App: React.FC = () => {
 };
 
 export default App;
-
