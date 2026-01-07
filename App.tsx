@@ -28,7 +28,7 @@ const iconicRoutes: Route[] = [
     difficulty: 'Lendária',
     points: [],
     status: 'planejada',
-    thumbnail: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/09/3c/e7/c9/serra-do-rio-do-rastro.jpg?w=600&h=400&s=1',
+    thumbnail: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/09/3c/e7/c9/serra-rio-do-rastro.jpg?w=600&h=400&s=1',
     isOfficial: true
   },
   {
@@ -302,32 +302,41 @@ const App: React.FC = () => {
 
   const handleSaveRoute = async (newRoute: Route) => {
     if (!user) return;
-    const { error } = await supabase.from('routes').insert([{
-      user_id: user.id,
-      title: newRoute.title,
-      description: newRoute.description,
-      distance: newRoute.distance,
-      difficulty: newRoute.difficulty,
-      points: newRoute.points,
-      status: newRoute.status,
-      thumbnail: newRoute.thumbnail,
-      is_official: user.role === 'admin'
-    }]);
+    setIsUpdating(true);
 
-    if (error) alert("Erro ao salvar missão: " + error.message);
-    else {
-      fetchRoutes();
+    try {
+      const { error } = await supabase.from('routes').insert([{
+        user_id: user.id,
+        title: newRoute.title,
+        description: newRoute.description,
+        distance: newRoute.distance,
+        difficulty: newRoute.difficulty,
+        points: newRoute.points,
+        status: newRoute.status,
+        thumbnail: newRoute.thumbnail || 'https://images.unsplash.com/photo-1558981403-c5f91cbba527?q=80&w=800&auto=format&fit=crop',
+        is_official: user.role === 'admin'
+      }]);
+
+      if (error) throw error;
+
+      await fetchRoutes();
       setView('my-routes');
+    } catch (err: any) {
+      alert("Erro ao salvar missão no banco de dados: " + err.message);
+    } finally {
+      setIsUpdating(false);
     }
   };
 
   const handleDeleteRoute = async (routeId: string) => {
-    if (!confirm("Deseja realmente excluir esta missão?")) return;
-    const { error } = await supabase.from('routes').delete().eq('id', routeId);
-    if (error) alert("Erro ao excluir missão: " + error.message);
-    else {
+    if (!confirm("Deseja realmente excluir esta missão permanentemente?")) return;
+    try {
+      const { error } = await supabase.from('routes').delete().eq('id', routeId);
+      if (error) throw error;
       setRoutes(prev => prev.filter(r => r.id !== routeId));
       if (selectedRoute?.id === routeId) setSelectedRoute(null);
+    } catch (err: any) {
+      alert("Erro ao excluir missão: " + err.message);
     }
   };
 
@@ -634,7 +643,6 @@ const App: React.FC = () => {
                       {routes.filter(r => r.user_id === user?.id).length > 0 ? (
                         routes.filter(r => r.user_id === user?.id).map(route => (
                           <div key={route.id} className="bg-zinc-950 rounded-[2.5rem] border border-zinc-900 overflow-hidden shadow-2xl group flex flex-col relative cursor-pointer" onClick={() => setSelectedRoute(route)}>
-                            {/* Botão de Exclusão Corrigido: z-index alto e visibilidade mobile */}
                             <button 
                               onClick={(e) => { 
                                 e.stopPropagation(); 
@@ -836,7 +844,12 @@ const App: React.FC = () => {
                     <p className="text-zinc-500 text-sm leading-relaxed italic">"{selectedRoute.description}"</p>
                   </div>
                 </div>
-                <button onClick={() => { handleDeleteRoute(selectedRoute.id); setSelectedRoute(null); }} className="w-full flex items-center justify-center gap-3 bg-red-600 text-white py-5 rounded-2xl font-black uppercase text-[10px] hover:bg-red-700 transition-all shadow-xl">EXCLUIR REGISTRO <Trash2 size={16}/></button>
+                <button 
+                  onClick={() => { handleDeleteRoute(selectedRoute.id); setSelectedRoute(null); }} 
+                  className="w-full flex items-center justify-center gap-3 bg-red-600 text-white py-5 rounded-2xl font-black uppercase text-[10px] hover:bg-red-700 transition-all shadow-xl active:scale-95"
+                >
+                  EXCLUIR REGISTRO <Trash2 size={16}/>
+                </button>
               </div>
             </div>
           </div>
