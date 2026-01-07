@@ -8,7 +8,7 @@ import {
   MapPin, Radio, Award, Loader2, Save, X, Camera, 
   Zap, MessageCircle, Briefcase, Info, Cake, 
   Volume2, VolumeX, Maximize2, Navigation, ChevronRight,
-  Star, Users, ExternalLink, Upload
+  Star, Users, ExternalLink, Upload, Trash2
 } from 'lucide-react';
 import { getRouteInsights } from './services/geminiService';
 import { supabase } from './services/supabaseClient';
@@ -77,6 +77,7 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
   
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
   const [editForm, setEditForm] = useState<Partial<User>>({ name: '', bikeModel: '', avatar: '', birthDate: '', associationType: undefined });
@@ -302,7 +303,6 @@ const App: React.FC = () => {
   const handleSaveRoute = async (newRoute: Route) => {
     if (!user) return;
     const { error } = await supabase.from('routes').insert([{
-      id: newRoute.id,
       user_id: user.id,
       title: newRoute.title,
       description: newRoute.description,
@@ -315,7 +315,20 @@ const App: React.FC = () => {
     }]);
 
     if (error) alert("Erro ao salvar missão: " + error.message);
-    else fetchRoutes();
+    else {
+      fetchRoutes();
+      setView('my-routes');
+    }
+  };
+
+  const handleDeleteRoute = async (routeId: string) => {
+    if (!confirm("Deseja realmente excluir esta missão?")) return;
+    const { error } = await supabase.from('routes').delete().eq('id', routeId);
+    if (error) alert("Erro ao excluir missão: " + error.message);
+    else {
+      setRoutes(prev => prev.filter(r => r.id !== routeId));
+      if (selectedRoute?.id === routeId) setSelectedRoute(null);
+    }
   };
 
   const fetchInsights = async (route: Route) => {
@@ -332,14 +345,10 @@ const App: React.FC = () => {
 
   const handleLogout = async () => {
     try {
-      // Deixamos o onAuthStateChange cuidar do estado de carregamento global
       await supabase.auth.signOut();
-      setIsAuthenticated(false);
-      setUser(null);
-      setView('home');
     } catch (err) {
       console.error("Erro ao encerrar sessão:", err);
-      // Fallback em caso de erro de rede
+    } finally {
       setIsAuthenticated(false);
       setUser(null);
       setIsLoading(false);
@@ -624,13 +633,25 @@ const App: React.FC = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                       {routes.filter(r => r.user_id === user?.id).length > 0 ? (
                         routes.filter(r => r.user_id === user?.id).map(route => (
-                          <div key={route.id} className="bg-zinc-950 rounded-[2.5rem] border border-zinc-900 overflow-hidden shadow-2xl group flex flex-col">
+                          <div key={route.id} className="bg-zinc-950 rounded-[2.5rem] border border-zinc-900 overflow-hidden shadow-2xl group flex flex-col relative cursor-pointer" onClick={() => setSelectedRoute(route)}>
+                            {/* Botão de Exclusão Corrigido: z-index alto e visibilidade mobile */}
+                            <button 
+                              onClick={(e) => { 
+                                e.stopPropagation(); 
+                                e.preventDefault();
+                                handleDeleteRoute(route.id); 
+                              }} 
+                              className="absolute top-4 right-4 z-[50] p-3 bg-red-600 text-white rounded-full backdrop-blur-md opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all shadow-xl pointer-events-auto active:scale-95"
+                              title="Excluir Missão"
+                            >
+                              <Trash2 size={16} />
+                            </button>
                             <MapView points={route.points} className="h-48 grayscale group-hover:grayscale-0 transition-all duration-500" />
                             <div className="p-8">
                               <h3 className="text-2xl font-oswald font-black text-white uppercase italic truncate">{route.title}</h3>
                               <div className="flex items-center justify-between mt-4 text-zinc-500 text-[10px] font-bold uppercase tracking-widest">
                                 <span>{route.distance} Rodados</span>
-                                <span className="text-zinc-700 italic">{route.difficulty}</span>
+                                <span className="flex items-center gap-1 text-yellow-500 italic">VER TRAJETO <ChevronRight size={12}/></span>
                               </div>
                             </div>
                           </div>
@@ -777,12 +798,50 @@ const App: React.FC = () => {
                 </div>
               )}
             </div>
+
             <footer className="mt-16 py-8 text-center border-t border-zinc-900/50">
               <p className="text-[10px] italic text-zinc-600 uppercase tracking-widest">Developed by Antunes Rider</p>
             </footer>
           </div>
         )}
       </main>
+
+      {/* Modal de Trajeto Detalhado */}
+      {selectedRoute && (
+        <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4 md:p-10">
+          <div className="absolute inset-0 bg-black/95 backdrop-blur-md" onClick={() => setSelectedRoute(null)}></div>
+          <div className="relative w-full max-w-6xl bg-zinc-950 rounded-[3rem] border border-zinc-900 overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.8)] animate-in zoom-in-95 duration-300">
+            <div className="absolute top-6 right-6 z-50">
+              <button onClick={() => setSelectedRoute(null)} className="bg-zinc-900 p-4 rounded-full text-zinc-400 hover:text-white border border-zinc-800 transition-all"><X size={24}/></button>
+            </div>
+            <div className="flex flex-col lg:flex-row h-full max-h-[90vh]">
+              <div className="flex-1 h-[40vh] lg:h-auto border-b lg:border-b-0 lg:border-r border-zinc-900">
+                <MapView points={selectedRoute.points} className="h-full rounded-none" isInteractive />
+              </div>
+              <div className="w-full lg:w-96 p-10 flex flex-col justify-between space-y-8 overflow-y-auto">
+                <div>
+                  <header className="space-y-2 mb-8">
+                    <span className="text-yellow-500 font-black uppercase text-[10px] tracking-widest">Detalhes da Missão</span>
+                    <h3 className="text-4xl font-oswald font-black text-white uppercase italic leading-none">{selectedRoute.title}</h3>
+                  </header>
+                  <div className="space-y-6">
+                    <div className="flex justify-between items-end border-b border-zinc-900 pb-4">
+                      <span className="text-[10px] font-black uppercase text-zinc-600">Distância Total</span>
+                      <span className="text-2xl font-oswald font-black text-white italic">{selectedRoute.distance}</span>
+                    </div>
+                    <div className="flex justify-between items-end border-b border-zinc-900 pb-4">
+                      <span className="text-[10px] font-black uppercase text-zinc-600">Dificuldade</span>
+                      <span className="text-2xl font-oswald font-black text-red-600 italic uppercase">{selectedRoute.difficulty}</span>
+                    </div>
+                    <p className="text-zinc-500 text-sm leading-relaxed italic">"{selectedRoute.description}"</p>
+                  </div>
+                </div>
+                <button onClick={() => { handleDeleteRoute(selectedRoute.id); setSelectedRoute(null); }} className="w-full flex items-center justify-center gap-3 bg-red-600 text-white py-5 rounded-2xl font-black uppercase text-[10px] hover:bg-red-700 transition-all shadow-xl">EXCLUIR REGISTRO <Trash2 size={16}/></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
