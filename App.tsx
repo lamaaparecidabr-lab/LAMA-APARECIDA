@@ -68,6 +68,15 @@ const iconicRoutes: Route[] = [
 
 const ADMIN_EMAIL = 'lama.aparecidabr@gmail.com';
 
+// Fallback UUID generator if crypto.randomUUID is not available
+const generateUUID = () => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
+
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentView, setView] = useState<View>('home');
@@ -306,6 +315,7 @@ const App: React.FC = () => {
 
     try {
       const { error } = await supabase.from('routes').insert([{
+        id: generateUUID(), // Garantir um ID não nulo gerado no cliente
         user_id: user.id,
         title: newRoute.title,
         description: newRoute.description,
@@ -322,7 +332,7 @@ const App: React.FC = () => {
       await fetchRoutes();
       setView('my-routes');
     } catch (err: any) {
-      alert("Erro ao salvar missão no banco de dados: " + err.message);
+      alert("Erro ao salvar missão no banco de dados: " + (err.message || "Erro desconhecido. Verifique as configurações do banco."));
     } finally {
       setIsUpdating(false);
     }

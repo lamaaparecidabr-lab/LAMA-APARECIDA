@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-// Added Radio to imports from lucide-react
 import { Play, Square, Shield, Radio } from 'lucide-react';
 import { RoutePoint, Route } from '../types';
 import { MapView } from './MapView';
@@ -53,27 +52,13 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
     setTotalDistance(0);
     distanceRef.current = 0;
 
-    // Tenta obter a posição inicial imediatamente
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const firstPoint = { 
-          lat: pos.coords.latitude, 
-          lng: pos.coords.longitude, 
-          timestamp: pos.timestamp 
-        };
-        pointsRef.current = [firstPoint];
-        setPoints([firstPoint]);
-      },
-      (err) => console.debug("Aguardando sinal GPS mais forte...", err),
-      { enableHighAccuracy: true }
-    );
-
+    // Iniciar watchPosition com configurações de alta precisão
     watchId.current = navigator.geolocation.watchPosition(
       (pos) => {
-        // Filtro de acurácia (ignora pontos muito imprecisos)
+        // Ignorar pontos com precisão muito baixa (> 100 metros) para evitar jitter
         if (pos.coords.accuracy > 100) return;
 
-        const newPoint = { 
+        const newPoint: RoutePoint = { 
           lat: pos.coords.latitude, 
           lng: pos.coords.longitude, 
           timestamp: pos.timestamp 
@@ -83,21 +68,22 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
           const last = pointsRef.current[pointsRef.current.length - 1];
           const dist = calculateDistance(last, newPoint);
           
-          // Registra apenas se houver movimento real (> 5 metros) para evitar jitter
-          if (dist > 0.005) {
+          // Registra apenas se houver movimento real (> 10 metros) para economizar dados e bateria
+          if (dist > 0.01) {
             distanceRef.current += dist;
             setTotalDistance(distanceRef.current);
             pointsRef.current = [...pointsRef.current, newPoint];
-            setPoints(pointsRef.current);
+            setPoints([...pointsRef.current]);
           }
         } else {
+          // Primeiro ponto capturado
           pointsRef.current = [newPoint];
           setPoints([newPoint]);
         }
       },
       (error) => {
-        console.error("Erro no rastreamento:", error);
-        alert("Sinal de GPS perdido. Verifique as permissões de localização.");
+        console.error("Erro no rastreamento GPS:", error);
+        // Não interrompemos a gravação, apenas logamos, pois o sinal pode voltar
       },
       { 
         enableHighAccuracy: true, 
@@ -113,19 +99,21 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
       watchId.current = null;
     }
 
-    const finalPoints = pointsRef.current;
+    const finalPoints = [...pointsRef.current];
     const finalDistance = distanceRef.current;
 
     if (finalPoints.length < 2) {
-      alert("Trajeto muito curto para ser gravado.");
+      alert("Sinal de GPS insuficiente. Trajeto muito curto para ser gravado.");
       setIsRecording(false);
       setStartTime(null);
+      setPoints([]);
+      pointsRef.current = [];
       return;
     }
 
     if (onSave) {
       onSave({
-        id: '', // Gerado pelo Supabase
+        id: '', // O ID real será gerado pela função handleSaveRoute no App.tsx
         title: `Missão em ${new Date().toLocaleDateString('pt-BR')}`,
         description: `Percurso gravado via L.A.M.A. Sede Virtual. Duração: ${formatTime(elapsed)}.`,
         distance: `${finalDistance.toFixed(2)} km`,
@@ -164,7 +152,6 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
         </div>
         <div className="space-y-6">
           <div className="bg-zinc-950 p-8 rounded-[2.5rem] border border-zinc-900 space-y-6 shadow-xl relative overflow-hidden">
-             {/* The Radio icon component now has its import fixed */}
              <div className="absolute top-0 right-0 p-4 opacity-5"><Radio size={80} /></div>
              <div className="flex justify-between items-end relative z-10">
                <span className="text-[10px] font-black uppercase text-zinc-600 tracking-widest">Cronômetro</span>
