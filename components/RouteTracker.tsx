@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, Square, MapPin, Gauge, Clock, Radio, Shield } from 'lucide-react';
 import { RoutePoint, Route } from '../types';
@@ -23,7 +22,9 @@ const calculateDistance = (p1: RoutePoint, p2: RoutePoint): number => {
 export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [points, setPoints] = useState<RoutePoint[]>([]);
+  const pointsRef = useRef<RoutePoint[]>([]); // Ref para garantir acesso aos pontos mais recentes
   const [totalDistance, setTotalDistance] = useState(0);
+  const distanceRef = useRef(0);
   const [startTime, setStartTime] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const watchId = useRef<number | null>(null);
@@ -47,12 +48,14 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
     setIsRecording(true);
     setStartTime(Date.now());
     setPoints([]);
+    pointsRef.current = [];
     setTotalDistance(0);
+    distanceRef.current = 0;
 
-    // WatchPosition é ideal para rastreamento contínuo em PCs e Celulares
     watchId.current = navigator.geolocation.watchPosition(
       (pos) => {
-        if (pos.coords.accuracy > 70) return; // Ignora sinal fraco
+        // Aumentado limite de precisão para 150m para garantir rastro em condições sub-ideais
+        if (pos.coords.accuracy > 150) return; 
 
         const newPoint: RoutePoint = {
           lat: pos.coords.latitude,
@@ -60,18 +63,21 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
           timestamp: pos.timestamp,
         };
 
-        setPoints(prev => {
-          if (prev.length > 0) {
-            const last = prev[prev.length - 1];
-            const dist = calculateDistance(last, newPoint);
-            if (dist > 0.005) { // Movimento real detectado (> 5 metros)
-              setTotalDistance(d => d + dist);
-              return [...prev, newPoint];
-            }
-            return prev;
+        const currentPoints = pointsRef.current;
+        if (currentPoints.length > 0) {
+          const last = currentPoints[currentPoints.length - 1];
+          const dist = calculateDistance(last, newPoint);
+          // Reduzido para 3 metros para maior fidelidade no rastro
+          if (dist > 0.003) { 
+            distanceRef.current += dist;
+            setTotalDistance(distanceRef.current);
+            pointsRef.current = [...currentPoints, newPoint];
+            setPoints(pointsRef.current);
           }
-          return [newPoint];
-        });
+        } else {
+          pointsRef.current = [newPoint];
+          setPoints(pointsRef.current);
+        }
       },
       (err) => alert("Erro GPS: Ative a localização e tente novamente."),
       { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
@@ -84,15 +90,19 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
       watchId.current = null;
     }
     
-    if (onSave && points.length > 0) {
+    // Usamos pointsRef para garantir que pegamos os pontos exatos do momento
+    const finalPoints = pointsRef.current;
+    const finalDistance = distanceRef.current;
+
+    if (onSave && finalPoints.length > 0) {
       const date = new Date();
       onSave({
         id: Math.random().toString(36).substr(2, 9),
-        title: `Rota em ${date.toLocaleDateString()}`,
-        description: `Percurso gravado via GPS real. Duração: ${formatTime(elapsed)}.`,
-        distance: `${totalDistance.toFixed(2)} km`,
-        difficulty: totalDistance > 40 ? 'Moderada' : 'Fácil',
-        points: [...points],
+        title: `Missão em ${date.toLocaleDateString()}`,
+        description: `Percurso gravado via telemetria L.A.M.A. Duração: ${formatTime(elapsed)}.`,
+        distance: `${finalDistance.toFixed(2)} km`,
+        difficulty: finalDistance > 40 ? 'Moderada' : 'Fácil',
+        points: [...finalPoints],
         status: 'concluída',
         thumbnail: 'https://images.unsplash.com/photo-1458178351025-a764d88e0261?q=80&w=800&auto=format&fit=crop'
       });
@@ -102,7 +112,9 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
     setStartTime(null);
     setElapsed(0);
     setPoints([]);
+    pointsRef.current = [];
     setTotalDistance(0);
+    distanceRef.current = 0;
     alert("Missão Concluída!");
   };
 
@@ -116,7 +128,7 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-6">
       <header>
         <h2 className="text-3xl md:text-5xl font-oswald font-black uppercase text-white italic">
-          Gravar <span className="text-yellow-500">Rota</span>
+          Gravar <span className="text-yellow-500">Missão</span>
         </h2>
         <p className="text-zinc-600 text-[10px] font-bold uppercase tracking-widest mt-2">Sistema de Telemetria Ativo</p>
       </header>

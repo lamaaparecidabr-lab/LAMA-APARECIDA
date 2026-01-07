@@ -211,7 +211,7 @@ const App: React.FC = () => {
           description: r.description,
           distance: r.distance,
           difficulty: r.difficulty,
-          points: r.points,
+          points: Array.isArray(r.points) ? r.points : [],
           status: r.status,
           thumbnail: r.thumbnail,
           isOfficial: r.is_official
@@ -243,7 +243,6 @@ const App: React.FC = () => {
     setIsUpdating(true);
 
     try {
-      // Fix: Use editForm.birthDate instead of non-existent birth_date property on the state object.
       const { error } = await supabase.from('profiles').upsert({
         id: user.id,
         name: editForm.name,
@@ -332,17 +331,19 @@ const App: React.FC = () => {
   };
 
   const handleLogout = async () => {
-    setIsLoading(true);
     try {
+      // Deixamos o onAuthStateChange cuidar do estado de carregamento global
       await supabase.auth.signOut();
-    } catch (err) {
-      console.error("Erro ao encerrar sessão no servidor:", err);
-    } finally {
-      // Limpeza obrigatória do estado local, mesmo se o servidor falhar
       setIsAuthenticated(false);
       setUser(null);
       setView('home');
+    } catch (err) {
+      console.error("Erro ao encerrar sessão:", err);
+      // Fallback em caso de erro de rede
+      setIsAuthenticated(false);
+      setUser(null);
       setIsLoading(false);
+      setView('home');
     }
   };
 

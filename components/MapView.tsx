@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef } from 'react';
 import { RoutePoint } from '../types';
 
@@ -38,7 +37,7 @@ export const MapView: React.FC<MapViewProps> = ({ points, className = "h-64", is
 
   useEffect(() => {
     const L = (window as any).L;
-    if (!L || !leafletMap.current || points.length === 0) return;
+    if (!L || !leafletMap.current) return;
 
     // Clear existing layers if any (except base)
     leafletMap.current.eachLayer((layer: any) => {
@@ -47,7 +46,9 @@ export const MapView: React.FC<MapViewProps> = ({ points, className = "h-64", is
       }
     });
 
-    const latLngs = points.map(p => [p.lat, p.lng]);
+    if (!points || points.length === 0) return;
+
+    const latLngs = points.map(p => [p.lat, p.lng]).filter(coords => !isNaN(coords[0]) && !isNaN(coords[1]));
     
     if (latLngs.length > 1) {
       const polyline = L.polyline(latLngs, { color: '#eab308', weight: 4 }).addTo(leafletMap.current);
@@ -57,7 +58,7 @@ export const MapView: React.FC<MapViewProps> = ({ points, className = "h-64", is
       // Markers for start and end
       L.circleMarker(latLngs[0], { radius: 5, color: '#eab308', fillOpacity: 1 }).addTo(leafletMap.current);
       L.circleMarker(latLngs[latLngs.length - 1], { radius: 5, color: '#ef4444', fillOpacity: 1 }).addTo(leafletMap.current);
-    } else {
+    } else if (latLngs.length === 1) {
       // Single point (like the clubhouse)
       leafletMap.current.setView(latLngs[0], 18);
       L.circleMarker(latLngs[0], { 
