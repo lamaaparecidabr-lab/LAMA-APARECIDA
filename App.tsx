@@ -278,18 +278,25 @@ const App: React.FC = () => {
     if (!user) return;
     setIsUpdating(true);
     try {
-      // Otimização de dados (Sampling) para evitar Load failed por tamanho excessivo do payload
-      let optimizedPoints = newRoute.points;
-      if (optimizedPoints.length > 1500) {
-        const samplingRate = Math.ceil(optimizedPoints.length / 1500);
-        optimizedPoints = optimizedPoints.filter((_, idx) => idx % samplingRate === 0);
+      // 1. Limpeza rigorosa de dados (remover NaNs ou lixo que causa "Load failed")
+      // 2. Amostragem (Sampling) mais agressiva para manter o payload pequeno e estável
+      let rawPoints = newRoute.points.filter(p => 
+        p && 
+        typeof p.lat === 'number' && !isNaN(p.lat) && isFinite(p.lat) &&
+        typeof p.lng === 'number' && !isNaN(p.lng) && isFinite(p.lng)
+      );
+
+      let optimizedPoints = rawPoints;
+      if (optimizedPoints.length > 800) {
+        const samplingRate = Math.ceil(optimizedPoints.length / 800);
+        optimizedPoints = optimizedPoints.filter((_, idx) => (idx % samplingRate === 0) || (idx === optimizedPoints.length - 1));
       }
 
       const { error } = await supabase.from('routes').insert([{
         id: generateUUID(),
         user_id: user.id,
-        title: newRoute.title,
-        description: newRoute.description,
+        title: newRoute.title.trim() || `Missão em ${new Date().toLocaleDateString()}`,
+        description: newRoute.description.trim(),
         distance: newRoute.distance,
         difficulty: newRoute.difficulty,
         points: optimizedPoints,
@@ -300,12 +307,16 @@ const App: React.FC = () => {
 
       if (error) throw error;
       
-      // Atualiza lista local antes da navegação para garantir fluidez
+      // Pequeno delay e confirmação de sucesso antes de navegar
+      await new Promise(res => setTimeout(res, 300));
       await fetchRoutes();
+      
+      // Mudança garantida de visão apenas após confirmação do DB
       setView('my-routes');
     } catch (err: any) {
       console.error("Erro crítico ao salvar missão:", err);
-      alert("Erro ao salvar missão: " + (err.message || "Falha na conexão com o radar. Tente novamente."));
+      alert("Não foi possível salvar a missão no radar agora. Verifique seu sinal de internet e tente novamente.");
+      throw err; // Repropaga para o RouteTracker lidar com o isSaving
     } finally {
       setIsUpdating(false);
     }

@@ -10,9 +10,12 @@ interface MapViewProps {
 export const MapView: React.FC<MapViewProps> = ({ points, className = "h-64", isInteractive = false }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const leafletMap = useRef<any>(null);
+  const polylineLayer = useRef<any>(null);
+  const startMarker = useRef<any>(null);
+  const endMarker = useRef<any>(null);
+  const currentPosMarker = useRef<any>(null);
 
   useEffect(() => {
-    // Only load if L exists (added via CDN in index.html)
     const L = (window as any).L;
     if (!L || !mapRef.current || leafletMap.current) return;
 
@@ -21,11 +24,16 @@ export const MapView: React.FC<MapViewProps> = ({ points, className = "h-64", is
       dragging: isInteractive,
       scrollWheelZoom: isInteractive,
       attributionControl: false,
-    }).setView([-16.7908906, -49.2311547], 17);
+    }).setView([-16.7908906, -49.2311547], 15);
 
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
       maxZoom: 19,
     }).addTo(leafletMap.current);
+
+    // Forçar o mapa a reconhecer o tamanho correto do container
+    setTimeout(() => {
+      if (leafletMap.current) leafletMap.current.invalidateSize();
+    }, 100);
 
     return () => {
       if (leafletMap.current) {
@@ -39,46 +47,54 @@ export const MapView: React.FC<MapViewProps> = ({ points, className = "h-64", is
     const L = (window as any).L;
     if (!L || !leafletMap.current) return;
 
-    // Clear existing layers if any (except base)
-    leafletMap.current.eachLayer((layer: any) => {
-      if (layer instanceof L.Polyline || layer instanceof L.Marker || layer instanceof L.CircleMarker) {
-        leafletMap.current.removeLayer(layer);
-      }
-    });
-
-    if (!points || points.length === 0) return;
+    if (!points || points.length === 0) {
+      if (polylineLayer.current) leafletMap.current.removeLayer(polylineLayer.current);
+      if (startMarker.current) leafletMap.current.removeLayer(startMarker.current);
+      if (endMarker.current) leafletMap.current.removeLayer(endMarker.current);
+      if (currentPosMarker.current) leafletMap.current.removeLayer(currentPosMarker.current);
+      return;
+    }
 
     const latLngs = points.map(p => [p.lat, p.lng]).filter(coords => !isNaN(coords[0]) && !isNaN(coords[1]));
     
-    if (latLngs.length > 1) {
-      const polyline = L.polyline(latLngs, { color: '#eab308', weight: 4 }).addTo(leafletMap.current);
-      // Fit bounds for routes
-      leafletMap.current.fitBounds(polyline.getBounds(), { padding: [20, 20] });
-      
-      // Markers for start and end
-      L.circleMarker(latLngs[0], { radius: 5, color: '#eab308', fillOpacity: 1 }).addTo(leafletMap.current);
-      L.circleMarker(latLngs[latLngs.length - 1], { radius: 5, color: '#ef4444', fillOpacity: 1 }).addTo(leafletMap.current);
-    } else if (latLngs.length === 1) {
-      // Single point (like the clubhouse)
-      leafletMap.current.setView(latLngs[0], 18);
-      L.circleMarker(latLngs[0], { 
-        radius: 8, 
-        color: '#eab308', 
-        fillColor: '#eab308', 
-        fillOpacity: 0.8,
-        weight: 3
-      }).addTo(leafletMap.current);
-      
-      // Add a smaller inner circle for precision look
-      L.circleMarker(latLngs[0], { 
-        radius: 3, 
-        color: '#000', 
-        fillColor: '#000', 
-        fillOpacity: 1,
-        weight: 1
-      }).addTo(leafletMap.current);
+    if (latLngs.length > 0) {
+      // Atualizar ou Criar Polyline
+      if (polylineLayer.current) {
+        polylineLayer.current.setLatLngs(latLngs);
+      } else {
+        polylineLayer.current = L.polyline(latLngs, { color: '#eab308', weight: 4, opacity: 0.8 }).addTo(leafletMap.current);
+      }
+
+      // Atualizar Marcadores
+      const latestPoint = latLngs[latLngs.length - 1];
+
+      if (latLngs.length === 1) {
+        if (!startMarker.current) {
+          startMarker.current = L.circleMarker(latestPoint, { radius: 6, color: '#eab308', fillOpacity: 1 }).addTo(leafletMap.current);
+        } else {
+          startMarker.current.setLatLng(latestPoint);
+        }
+        leafletMap.current.panTo(latestPoint);
+      } else {
+        // Se estivermos gravando (não interativo) ou se for um novo trajeto, seguimos o rastro
+        if (!isInteractive) {
+           leafletMap.current.panTo(latestPoint);
+        }
+        
+        // Marcador de posição atual/final
+        if (!endMarker.current) {
+          endMarker.current = L.circleMarker(latestPoint, { radius: 5, color: '#ef4444', fillOpacity: 1, weight: 2 }).addTo(leafletMap.current);
+        } else {
+          endMarker.current.setLatLng(latestPoint);
+        }
+
+        // Fit bounds apenas no início ou se o trajeto crescer muito
+        if (latLngs.length % 20 === 0 && isInteractive) {
+          leafletMap.current.fitBounds(polylineLayer.current.getBounds(), { padding: [30, 30] });
+        }
+      }
     }
-  }, [points]);
+  }, [points, isInteractive]);
 
   return (
     <div ref={mapRef} className={`rounded-xl overflow-hidden border border-zinc-800 ${className}`} />
