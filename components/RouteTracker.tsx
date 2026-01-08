@@ -59,18 +59,18 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
     setIsRecording(true);
     setStartTime(Date.now());
 
-    // Tentar manter a tela ligada durante a missão (Wake Lock)
+    // Tentar manter a tela ligada durante a missão
     if ('wakeLock' in navigator) {
       try {
         wakeLock.current = await (navigator as any).wakeLock.request('screen');
       } catch (err) {
-        console.warn("Wake Lock não disponível");
+        console.warn("Wake Lock indisponível neste navegador.");
       }
     }
 
-    const handleNewPosition = (pos: GeolocationPosition) => {
-      // Relaxamos o filtro de precisão para 150m para garantir captura em áreas urbanas
-      if (pos.coords.accuracy > 150) return;
+    const processNewPosition = (pos: GeolocationPosition) => {
+      // Tolerância de precisão ajustada para 200m para evitar descartar pontos em cidades
+      if (pos.coords.accuracy > 200) return;
 
       const newPoint: RoutePoint = { 
         lat: Number(pos.coords.latitude.toFixed(6)), 
@@ -78,37 +78,35 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
         timestamp: pos.timestamp 
       };
 
-      setPoints(prevPoints => {
-        if (prevPoints.length === 0) {
-          pointsRef.current = [newPoint];
-          return [newPoint];
-        }
+      const lastPoint = pointsRef.current[pointsRef.current.length - 1];
 
-        const last = prevPoints[prevPoints.length - 1];
-        const dist = calculateDistance(last, newPoint);
-        
-        // Sensibilidade de 1 metro para garantir que qualquer movimento saia do 0.00km
-        if (dist > 0.001) {
-          distanceRef.current += dist;
+      if (!lastPoint) {
+        pointsRef.current = [newPoint];
+        setPoints([newPoint]);
+      } else {
+        const d = calculateDistance(lastPoint, newPoint);
+        // Sensibilidade de 2 metros para registrar movimento real
+        if (d > 0.002) {
+          distanceRef.current += d;
+          pointsRef.current.push(newPoint);
+          
+          // Atualização de estado síncrona para garantir renderização no mapa
           setTotalDistance(distanceRef.current);
-          const updated = [...prevPoints, newPoint];
-          pointsRef.current = updated;
-          return updated;
+          setPoints([...pointsRef.current]);
         }
-        return prevPoints;
-      });
+      }
     };
 
-    // Captura inicial para destravar o sistema instantaneamente
-    navigator.geolocation.getCurrentPosition(handleNewPosition, 
-      (err) => console.warn("GPS inicial falhou, aguardando watch...", err),
+    // 1. Captura imediata "quente"
+    navigator.geolocation.getCurrentPosition(processNewPosition, 
+      (err) => console.warn("Aguardando estabilização do sinal satelital...", err),
       { enableHighAccuracy: true, timeout: 5000 }
     );
 
-    // Monitoramento contínuo de alta frequência
+    // 2. Fluxo contínuo de alta fidelidade
     watchId.current = navigator.geolocation.watchPosition(
-      handleNewPosition,
-      (error) => console.error("Erro de Radar:", error),
+      processNewPosition,
+      (error) => console.error("Falha no link de satélite:", error),
       { 
         enableHighAccuracy: true, 
         timeout: 10000, 
@@ -133,7 +131,7 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
     const finalElapsed = elapsed;
 
     if (finalPoints.length < 2 || finalDistance < 0.01) {
-      alert("Trajeto insuficiente. Movimente-se um pouco mais para que o Radar grave sua missão.");
+      alert("Trajeto insuficiente detectado no Radar. Movimente-se mais um pouco.");
       resetState();
       return;
     }
@@ -151,7 +149,7 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
           status: 'concluída'
         });
       } catch (err) {
-        console.error("Erro no salvamento:", err);
+        console.error("Erro ao salvar no banco:", err);
       }
     }
 
@@ -181,7 +179,7 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-6 duration-700">
       <header>
         <h2 className="text-3xl md:text-5xl font-oswald font-black uppercase text-white italic">Gravar <span className="text-yellow-500">Missão</span></h2>
-        <p className="text-zinc-600 text-[10px] font-bold uppercase tracking-widest mt-2">Radar Ativo: Prontidão para Captura Satelital</p>
+        <p className="text-zinc-600 text-[10px] font-bold uppercase tracking-widest mt-2">Radar Ativo: Captura de Telemetria Satelital</p>
       </header>
       <div className="flex flex-col lg:grid lg:grid-cols-4 gap-6">
         <div className="lg:col-span-3">
@@ -222,7 +220,7 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
           <div className="flex items-center gap-4 bg-zinc-900/40 p-5 rounded-2xl border border-zinc-800">
             <Shield className="text-red-600 shrink-0" size={18} />
             <p className="text-[9px] text-zinc-500 font-bold uppercase italic leading-relaxed">
-              Dica: Mantenha esta tela aberta e visível para garantir a telemetria perfeita.
+              Importante: Mantenha a tela ligada e evite fechar o app para não interromper o Radar.
             </p>
           </div>
         </div>

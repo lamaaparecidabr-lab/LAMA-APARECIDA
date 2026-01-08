@@ -30,13 +30,12 @@ export const MapView: React.FC<MapViewProps> = ({ points, className = "h-64", is
       maxZoom: 19,
     }).addTo(leafletMap.current);
 
-    // Ajuste forçado de tamanho inicial
+    // Ajuste de tamanho em múltiplos tempos para garantir renderização mobile
     const invalidate = () => {
       if (leafletMap.current) leafletMap.current.invalidateSize();
     };
-    
     setTimeout(invalidate, 100);
-    setTimeout(invalidate, 500);
+    setTimeout(invalidate, 1000);
 
     return () => {
       if (leafletMap.current) {
@@ -63,7 +62,7 @@ export const MapView: React.FC<MapViewProps> = ({ points, className = "h-64", is
     const latLngs = points.map(p => [p.lat, p.lng]);
     
     if (latLngs.length > 0) {
-      // Gerencia a linha do traçado
+      // Atualização ou criação da linha amarela
       if (polylineLayer.current) {
         polylineLayer.current.setLatLngs(latLngs);
       } else {
@@ -78,7 +77,7 @@ export const MapView: React.FC<MapViewProps> = ({ points, className = "h-64", is
       const firstPoint = latLngs[0];
       const latestPoint = latLngs[latLngs.length - 1];
 
-      // Marcador de início da missão
+      // Marcador inicial (fixo)
       if (!startMarker.current) {
         startMarker.current = L.circleMarker(firstPoint, { 
           radius: 7, 
@@ -89,7 +88,7 @@ export const MapView: React.FC<MapViewProps> = ({ points, className = "h-64", is
         }).addTo(leafletMap.current);
       }
 
-      // Marcador de posição atual em tempo real
+      // Marcador atual (move-se com o GPS)
       if (!endMarker.current) {
         endMarker.current = L.circleMarker(latestPoint, { 
           radius: 6, 
@@ -102,14 +101,14 @@ export const MapView: React.FC<MapViewProps> = ({ points, className = "h-64", is
         endMarker.current.setLatLng(latestPoint);
       }
 
-      // Comportamento de foco
+      // Comportamento de câmera
       if (!isInteractive) {
-        // Segue o motociclista suavemente
-        leafletMap.current.panTo(latestPoint, { animate: true, duration: 0.5 });
+        // Segue o motociclista suavemente no centro
+        leafletMap.current.panTo(latestPoint, { animate: true });
         if (latLngs.length === 1) leafletMap.current.setZoom(17);
       } else if (latLngs.length > 1) {
-        // No mural, ajusta para ver o trajeto completo
-        leafletMap.current.fitBounds(polylineLayer.current.getBounds(), { padding: [30, 30] });
+        // Enquadra a rota completa (Mural/Admin)
+        leafletMap.current.fitBounds(polylineLayer.current.getBounds(), { padding: [40, 40] });
       }
     }
   }, [points, isInteractive]);
