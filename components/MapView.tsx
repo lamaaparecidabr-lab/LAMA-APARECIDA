@@ -24,20 +24,18 @@ export const MapView: React.FC<MapViewProps> = ({ points, className = "h-64", is
       dragging: isInteractive,
       scrollWheelZoom: isInteractive,
       attributionControl: false,
-    }).setView([-16.7908906, -49.2311547], 15);
+    }).setView([-16.7908906, -49.2311547], 16);
 
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
       maxZoom: 19,
     }).addTo(leafletMap.current);
 
-    // Ajuste de tamanho vital para evitar tela cinza
-    const resizeObserver = new ResizeObserver(() => {
+    // Garante que o mapa ocupe todo o container disponível
+    setTimeout(() => {
       if (leafletMap.current) leafletMap.current.invalidateSize();
-    });
-    resizeObserver.observe(mapRef.current);
+    }, 250);
 
     return () => {
-      resizeObserver.disconnect();
       if (leafletMap.current) {
         leafletMap.current.remove();
         leafletMap.current = null;
@@ -59,41 +57,46 @@ export const MapView: React.FC<MapViewProps> = ({ points, className = "h-64", is
       return;
     }
 
-    const latLngs = points.map(p => [p.lat, p.lng]).filter(coords => !isNaN(coords[0]) && !isNaN(coords[1]));
+    const latLngs = points.map(p => [p.lat, p.lng]);
     
     if (latLngs.length > 0) {
-      // Gerenciamento da Linha (Trajeto)
+      // Atualizar Linha do Trajeto
       if (polylineLayer.current) {
         polylineLayer.current.setLatLngs(latLngs);
       } else {
-        polylineLayer.current = L.polyline(latLngs, { color: '#eab308', weight: 4, opacity: 0.8 }).addTo(leafletMap.current);
+        polylineLayer.current = L.polyline(latLngs, { color: '#eab308', weight: 5, opacity: 0.85 }).addTo(leafletMap.current);
       }
 
-      // Marcadores de Início e Fim
       const firstPoint = latLngs[0];
       const latestPoint = latLngs[latLngs.length - 1];
 
+      // Marcador de Início (Amarelo)
       if (!startMarker.current) {
-        startMarker.current = L.circleMarker(firstPoint, { radius: 6, color: '#eab308', fillOpacity: 1 }).addTo(leafletMap.current);
+        startMarker.current = L.circleMarker(firstPoint, { radius: 7, color: '#eab308', fillOpacity: 1, weight: 2 }).addTo(leafletMap.current);
       }
 
+      // Marcador de Posição Atual (Vermelho)
       if (!endMarker.current) {
-        endMarker.current = L.circleMarker(latestPoint, { radius: 5, color: '#ef4444', fillOpacity: 1, weight: 2 }).addTo(leafletMap.current);
+        endMarker.current = L.circleMarker(latestPoint, { radius: 6, color: '#ef4444', fillOpacity: 1, weight: 2 }).addTo(leafletMap.current);
       } else {
         endMarker.current.setLatLng(latestPoint);
       }
 
-      // Seguir o usuário em tempo real se não for o modo interativo (mural/detalhes)
+      // Durante a gravação, focar sempre no ponto atual
       if (!isInteractive) {
-        leafletMap.current.panTo(latestPoint);
+        leafletMap.current.panTo(latestPoint, { animate: true });
+        // Se for o primeiro ponto, ajusta o zoom
+        if (latLngs.length === 1) {
+          leafletMap.current.setZoom(17);
+        }
       } else if (latLngs.length > 1) {
-        // No mural, ajustamos para ver o trajeto completo
-        leafletMap.current.fitBounds(polylineLayer.current.getBounds(), { padding: [20, 20] });
+        // No mural, mostra o trajeto inteiro
+        leafletMap.current.fitBounds(polylineLayer.current.getBounds(), { padding: [40, 40] });
       }
     }
   }, [points, isInteractive]);
 
   return (
-    <div ref={mapRef} className={`rounded-xl overflow-hidden border border-zinc-800 ${className}`} />
+    <div ref={mapRef} className={`rounded-xl overflow-hidden border border-zinc-800 bg-zinc-900 ${className}`} />
   );
 };

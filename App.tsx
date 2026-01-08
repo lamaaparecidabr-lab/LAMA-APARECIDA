@@ -278,23 +278,23 @@ const App: React.FC = () => {
     if (!user) return;
     setIsUpdating(true);
     try {
-      // 1. Limpeza agressiva de dados GPS NaNs ou Nulls
+      // 1. Limpeza profunda de telemetria
       let validPoints = newRoute.points.filter(p => 
         p && typeof p.lat === 'number' && !isNaN(p.lat) && 
         typeof p.lng === 'number' && !isNaN(p.lng)
       );
 
-      // 2. Amostragem para manter o payload leve (max 800 pontos)
+      // 2. Otimização de carga (sampling equilibrado)
       let optimizedPoints = validPoints;
-      if (optimizedPoints.length > 800) {
-        const factor = Math.ceil(optimizedPoints.length / 800);
+      if (optimizedPoints.length > 600) {
+        const factor = Math.ceil(optimizedPoints.length / 600);
         optimizedPoints = optimizedPoints.filter((_, i) => i % factor === 0 || i === optimizedPoints.length - 1);
       }
 
-      const payload = {
+      const { error } = await supabase.from('routes').insert([{
         id: generateUUID(),
         user_id: user.id,
-        title: newRoute.title.trim() || `Missão em ${new Date().toLocaleDateString()}`,
+        title: newRoute.title.trim() || `Missão ${new Date().toLocaleDateString()}`,
         description: newRoute.description.trim(),
         distance: newRoute.distance,
         difficulty: newRoute.difficulty,
@@ -302,18 +302,16 @@ const App: React.FC = () => {
         status: newRoute.status,
         thumbnail: newRoute.thumbnail || 'https://images.unsplash.com/photo-1558981403-c5f91cbba527?q=80&w=800&auto=format&fit=crop',
         is_official: user.role === 'admin'
-      };
-
-      const { error } = await supabase.from('routes').insert([payload]);
+      }]);
 
       if (error) throw error;
       
-      // 3. Aguarda confirmação e atualiza mural
+      // 3. Atualiza mural e navega
       await fetchRoutes();
       setView('my-routes');
     } catch (err: any) {
-      console.error("Erro ao salvar no Supabase:", err);
-      alert("Falha ao salvar missão. Verifique sua conexão e tente novamente.");
+      console.error("Erro crítico de rede:", err);
+      alert("Falha ao sincronizar com o Radar. Verifique sua internet.");
       throw err;
     } finally {
       setIsUpdating(false);
