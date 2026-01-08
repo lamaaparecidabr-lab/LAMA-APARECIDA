@@ -278,13 +278,13 @@ const App: React.FC = () => {
     if (!user) return;
     setIsUpdating(true);
     try {
-      // 1. Limpeza profunda de telemetria
+      // Limpeza profunda e otimização do trajeto antes de salvar
       let validPoints = newRoute.points.filter(p => 
         p && typeof p.lat === 'number' && !isNaN(p.lat) && 
         typeof p.lng === 'number' && !isNaN(p.lng)
       );
 
-      // 2. Otimização de carga (sampling equilibrado)
+      // Sampling equilibrado para evitar erros de carga
       let optimizedPoints = validPoints;
       if (optimizedPoints.length > 600) {
         const factor = Math.ceil(optimizedPoints.length / 600);
@@ -306,12 +306,12 @@ const App: React.FC = () => {
 
       if (error) throw error;
       
-      // 3. Atualiza mural e navega
+      // Atualização imediata e navegação síncrona para o mural
       await fetchRoutes();
       setView('my-routes');
     } catch (err: any) {
-      console.error("Erro crítico de rede:", err);
-      alert("Falha ao sincronizar com o Radar. Verifique sua internet.");
+      console.error("Erro crítico ao salvar missão no Radar:", err);
+      alert("Não foi possível sincronizar com o Mural agora. Verifique sua conexão.");
       throw err;
     } finally {
       setIsUpdating(false);

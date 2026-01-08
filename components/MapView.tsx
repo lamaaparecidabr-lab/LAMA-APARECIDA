@@ -18,7 +18,7 @@ export const MapView: React.FC<MapViewProps> = ({ points, className = "h-64", is
     const L = (window as any).L;
     if (!L || !mapRef.current || leafletMap.current) return;
 
-    // Inicializa o mapa focado em Aparecida de Goiânia por padrão
+    // Inicializa o mapa com foco padrão
     leafletMap.current = L.map(mapRef.current, {
       zoomControl: isInteractive,
       dragging: isInteractive,
@@ -30,10 +30,10 @@ export const MapView: React.FC<MapViewProps> = ({ points, className = "h-64", is
       maxZoom: 19,
     }).addTo(leafletMap.current);
 
-    // Garante que o mapa ocupe todo o container disponível
+    // Ajuste forçado de tamanho
     setTimeout(() => {
       if (leafletMap.current) leafletMap.current.invalidateSize();
-    }, 250);
+    }, 400);
 
     return () => {
       if (leafletMap.current) {
@@ -60,38 +60,40 @@ export const MapView: React.FC<MapViewProps> = ({ points, className = "h-64", is
     const latLngs = points.map(p => [p.lat, p.lng]);
     
     if (latLngs.length > 0) {
-      // Atualizar Linha do Trajeto
+      // Cria ou atualiza o traçado amarelo
       if (polylineLayer.current) {
         polylineLayer.current.setLatLngs(latLngs);
       } else {
-        polylineLayer.current = L.polyline(latLngs, { color: '#eab308', weight: 5, opacity: 0.85 }).addTo(leafletMap.current);
+        polylineLayer.current = L.polyline(latLngs, { 
+          color: '#eab308', 
+          weight: 5, 
+          opacity: 0.9,
+          lineJoin: 'round'
+        }).addTo(leafletMap.current);
       }
 
       const firstPoint = latLngs[0];
       const latestPoint = latLngs[latLngs.length - 1];
 
-      // Marcador de Início (Amarelo)
+      // Marcador inicial
       if (!startMarker.current) {
         startMarker.current = L.circleMarker(firstPoint, { radius: 7, color: '#eab308', fillOpacity: 1, weight: 2 }).addTo(leafletMap.current);
       }
 
-      // Marcador de Posição Atual (Vermelho)
+      // Marcador de posição atual (ponto vermelho pulsante/visível)
       if (!endMarker.current) {
         endMarker.current = L.circleMarker(latestPoint, { radius: 6, color: '#ef4444', fillOpacity: 1, weight: 2 }).addTo(leafletMap.current);
       } else {
         endMarker.current.setLatLng(latestPoint);
       }
 
-      // Durante a gravação, focar sempre no ponto atual
+      // Se estiver gravando (não interativo), centraliza no ponto atual
       if (!isInteractive) {
-        leafletMap.current.panTo(latestPoint, { animate: true });
-        // Se for o primeiro ponto, ajusta o zoom
-        if (latLngs.length === 1) {
-          leafletMap.current.setZoom(17);
-        }
+        leafletMap.current.panTo(latestPoint);
+        if (latLngs.length === 1) leafletMap.current.setZoom(17);
       } else if (latLngs.length > 1) {
-        // No mural, mostra o trajeto inteiro
-        leafletMap.current.fitBounds(polylineLayer.current.getBounds(), { padding: [40, 40] });
+        // No mural ou detalhes, ajusta para ver a rota toda
+        leafletMap.current.fitBounds(polylineLayer.current.getBounds(), { padding: [30, 30] });
       }
     }
   }, [points, isInteractive]);

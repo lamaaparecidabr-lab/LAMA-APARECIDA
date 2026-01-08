@@ -8,7 +8,7 @@ interface RouteTrackerProps {
 }
 
 const calculateDistance = (p1: RoutePoint, p2: RoutePoint): number => {
-  const R = 6371; // Raio da Terra em km
+  const R = 6371; // km
   const dLat = (p2.lat - p1.lat) * Math.PI / 180;
   const dLon = (p2.lng - p1.lng) * Math.PI / 180;
   const a = 
@@ -47,7 +47,7 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
 
   const startTracking = () => {
     if (!navigator.geolocation) { 
-      alert("Seu dispositivo não permite acesso ao Radar GPS."); 
+      alert("Erro: Este dispositivo não possui suporte a Radar GPS."); 
       return; 
     }
 
@@ -55,40 +55,53 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
     setIsRecording(true);
     setStartTime(Date.now());
 
-    // Iniciar monitoramento unificado
+    // 1. Captura imediata do ponto zero para destravar o velocímetro
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const firstPoint: RoutePoint = { 
+          lat: Number(pos.coords.latitude.toFixed(6)), 
+          lng: Number(pos.coords.longitude.toFixed(6)), 
+          timestamp: pos.timestamp 
+        };
+        pointsRef.current = [firstPoint];
+        setPoints([firstPoint]);
+      },
+      (err) => console.warn("Aguardando satélite...", err),
+      { enableHighAccuracy: true }
+    );
+
+    // 2. Iniciar monitoramento persistente
     watchId.current = navigator.geolocation.watchPosition(
       (pos) => {
+        // Ignorar pontos com precisão muito baixa (> 100m) para evitar teletransporte no mapa
+        if (pos.coords.accuracy > 100) return;
+
         const newPoint: RoutePoint = { 
           lat: Number(pos.coords.latitude.toFixed(6)), 
           lng: Number(pos.coords.longitude.toFixed(6)), 
           timestamp: pos.timestamp 
         };
 
-        // Se for o primeiro ponto capturado
-        if (pointsRef.current.length === 0) {
+        if (pointsRef.current.length > 0) {
+          const last = pointsRef.current[pointsRef.current.length - 1];
+          const dist = calculateDistance(last, newPoint);
+          
+          // Sensibilidade de 2 metros para garantir que o trajeto acompanhe a moto
+          if (dist > 0.002) {
+            distanceRef.current += dist;
+            setTotalDistance(distanceRef.current);
+            pointsRef.current = [...pointsRef.current, newPoint];
+            setPoints([...pointsRef.current]);
+          }
+        } else {
           pointsRef.current = [newPoint];
           setPoints([newPoint]);
-          return;
-        }
-
-        const last = pointsRef.current[pointsRef.current.length - 1];
-        const dist = calculateDistance(last, newPoint);
-        
-        // Sensibilidade de 3 metros para registrar movimento real e evitar travamento em 0,00km
-        if (dist > 0.003) {
-          distanceRef.current += dist;
-          setTotalDistance(distanceRef.current);
-          pointsRef.current = [...pointsRef.current, newPoint];
-          setPoints([...pointsRef.current]);
         }
       },
-      (error) => {
-        console.error("GPS Error:", error);
-        // Não interrompe a gravação se for apenas perda momentânea de sinal
-      },
+      (error) => console.error("Falha no Radar:", error),
       { 
         enableHighAccuracy: true, 
-        timeout: 10000, 
+        timeout: 15000, 
         maximumAge: 0 
       }
     );
@@ -104,8 +117,9 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
     const finalDistance = distanceRef.current;
     const finalElapsed = elapsed;
 
+    // Reduzi a exigência para 2 pontos reais para evitar frustração em testes curtos
     if (finalPoints.length < 2) {
-      alert("O Radar não detectou movimento suficiente. Tente gravar em um trajeto mais longo.");
+      alert("Atenção: Movimente-se mais para que o Radar grave o trajeto.");
       resetState();
       return;
     }
@@ -116,15 +130,14 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
         await onSave({
           id: '', 
           title: `Missão em ${new Date().toLocaleDateString('pt-BR')}`,
-          description: `Percurso gravado via L.A.M.A. Sede Virtual. Tempo de Estrada: ${formatTime(finalElapsed)}.`,
+          description: `Percurso gravado via L.A.M.A. Sede Virtual. Duração: ${formatTime(finalElapsed)}.`,
           distance: `${finalDistance.toFixed(2)} km`,
           difficulty: finalDistance > 50 ? 'Moderada' : 'Fácil',
           points: finalPoints,
           status: 'concluída'
         });
       } catch (err) {
-        console.error("Falha ao sincronizar com a base:", err);
-        alert("Erro ao gravar missão. Verifique sua conexão.");
+        console.error("Erro no salvamento:", err);
       }
     }
 
@@ -154,11 +167,11 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-6 duration-700">
       <header>
         <h2 className="text-3xl md:text-5xl font-oswald font-black uppercase text-white italic">Gravar <span className="text-yellow-500">Missão</span></h2>
-        <p className="text-zinc-600 text-[10px] font-bold uppercase tracking-widest mt-2">Sinal de Satélite Ativo e Sincronizado</p>
+        <p className="text-zinc-600 text-[10px] font-bold uppercase tracking-widest mt-2">Radar Ativo: Prontidão para Captura Satelital</p>
       </header>
       <div className="flex flex-col lg:grid lg:grid-cols-4 gap-6">
         <div className="lg:col-span-3">
-          <MapView points={points} className="h-[300px] md:h-[500px] rounded-[2.5rem] shadow-2xl" isInteractive={false} />
+          <MapView points={points} className="h-[250px] md:h-[450px] rounded-[2.5rem] shadow-2xl" isInteractive={false} />
         </div>
         <div className="space-y-6">
           <div className="bg-zinc-950 p-8 rounded-[2.5rem] border border-zinc-900 space-y-6 shadow-xl relative overflow-hidden">
@@ -188,14 +201,14 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
               className="w-full bg-red-600 hover:bg-red-700 text-white py-6 rounded-2xl font-black uppercase text-[12px] flex items-center justify-center gap-3 animate-pulse shadow-xl active:scale-95 disabled:opacity-50"
             >
               {isSaving ? <Loader2 className="animate-spin" size={20} /> : <Square size={20} fill="currentColor" />} 
-              {isSaving ? 'Gravando no Mural...' : 'Finalizar Missão'}
+              {isSaving ? 'Salvando Missão...' : 'Finalizar Missão'}
             </button>
           )}
           
           <div className="flex items-center gap-4 bg-zinc-900/40 p-5 rounded-2xl border border-zinc-800">
-            <Shield className="text-yellow-500 shrink-0" size={18} />
+            <Shield className="text-red-600 shrink-0" size={18} />
             <p className="text-[9px] text-zinc-500 font-bold uppercase italic leading-relaxed">
-              Dica: Para melhor precisão, mantenha o celular em suporte com visão para o céu.
+              Dica: Mantenha esta tela aberta e visível para garantir a telemetria perfeita.
             </p>
           </div>
         </div>
