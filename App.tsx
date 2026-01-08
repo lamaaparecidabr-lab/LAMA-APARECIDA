@@ -278,6 +278,13 @@ const App: React.FC = () => {
     if (!user) return;
     setIsUpdating(true);
     try {
+      // Otimização de dados (Sampling) para evitar Load failed por tamanho excessivo do payload
+      let optimizedPoints = newRoute.points;
+      if (optimizedPoints.length > 1500) {
+        const samplingRate = Math.ceil(optimizedPoints.length / 1500);
+        optimizedPoints = optimizedPoints.filter((_, idx) => idx % samplingRate === 0);
+      }
+
       const { error } = await supabase.from('routes').insert([{
         id: generateUUID(),
         user_id: user.id,
@@ -285,16 +292,20 @@ const App: React.FC = () => {
         description: newRoute.description,
         distance: newRoute.distance,
         difficulty: newRoute.difficulty,
-        points: newRoute.points,
+        points: optimizedPoints,
         status: newRoute.status,
         thumbnail: newRoute.thumbnail || 'https://images.unsplash.com/photo-1558981403-c5f91cbba527?q=80&w=800&auto=format&fit=crop',
         is_official: user.role === 'admin'
       }]);
+
       if (error) throw error;
+      
+      // Atualiza lista local antes da navegação para garantir fluidez
       await fetchRoutes();
       setView('my-routes');
     } catch (err: any) {
-      alert("Erro ao salvar missão no banco de dados: " + (err.message || "Erro desconhecido."));
+      console.error("Erro crítico ao salvar missão:", err);
+      alert("Erro ao salvar missão: " + (err.message || "Falha na conexão com o radar. Tente novamente."));
     } finally {
       setIsUpdating(false);
     }
@@ -406,7 +417,6 @@ const App: React.FC = () => {
       <Sidebar user={user} currentView={currentView} setView={setView} onLogout={handleLogout} />
       
       <main className="flex-1 p-5 md:p-12 pb-32 md:pb-12 max-w-[1400px] mx-auto w-full overflow-y-auto custom-scrollbar flex flex-col">
-        {/* Aba explorer (Icônicas) removida do array de permissão pública conforme solicitado */}
         {!isAuthenticated && !['home', 'clubhouse', 'gallery'].includes(currentView) ? (
           <div className="flex-1 flex flex-col items-center justify-center p-4">
             <div className="w-full max-w-md bg-zinc-900 border border-zinc-800 p-8 rounded-[2.5rem] shadow-2xl">

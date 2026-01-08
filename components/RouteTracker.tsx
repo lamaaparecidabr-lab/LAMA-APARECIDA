@@ -56,8 +56,8 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const firstPoint: RoutePoint = { 
-          lat: pos.coords.latitude, 
-          lng: pos.coords.longitude, 
+          lat: Number(pos.coords.latitude.toFixed(6)), 
+          lng: Number(pos.coords.longitude.toFixed(6)), 
           timestamp: pos.timestamp 
         };
         pointsRef.current = [firstPoint];
@@ -72,9 +72,10 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
       (pos) => {
         if (pos.coords.accuracy > 100) return;
 
+        // Otimização: Arredondar para 6 casas decimais reduz o tamanho do JSON enviado ao DB drasticamente
         const newPoint: RoutePoint = { 
-          lat: pos.coords.latitude, 
-          lng: pos.coords.longitude, 
+          lat: Number(pos.coords.latitude.toFixed(6)), 
+          lng: Number(pos.coords.longitude.toFixed(6)), 
           timestamp: pos.timestamp 
         };
 
@@ -141,7 +142,8 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
     setPoints([]);
     pointsRef.current = [];
     setTotalDistance(0);
-    alert("Missão Finalizada e Enviada para o Mural!");
+    // Notificação rápida antes do Loader de salvamento
+    console.debug("Finalizando missão e processando telemetria...");
   };
 
   const formatTime = (sec: number) => {
