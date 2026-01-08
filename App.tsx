@@ -278,21 +278,20 @@ const App: React.FC = () => {
     if (!user) return;
     setIsUpdating(true);
     try {
-      // 1. Limpeza rigorosa de dados (remover NaNs ou lixo que causa "Load failed")
-      // 2. Amostragem (Sampling) mais agressiva para manter o payload pequeno e estável
-      let rawPoints = newRoute.points.filter(p => 
-        p && 
-        typeof p.lat === 'number' && !isNaN(p.lat) && isFinite(p.lat) &&
-        typeof p.lng === 'number' && !isNaN(p.lng) && isFinite(p.lng)
+      // 1. Limpeza agressiva de dados GPS NaNs ou Nulls
+      let validPoints = newRoute.points.filter(p => 
+        p && typeof p.lat === 'number' && !isNaN(p.lat) && 
+        typeof p.lng === 'number' && !isNaN(p.lng)
       );
 
-      let optimizedPoints = rawPoints;
+      // 2. Amostragem para manter o payload leve (max 800 pontos)
+      let optimizedPoints = validPoints;
       if (optimizedPoints.length > 800) {
-        const samplingRate = Math.ceil(optimizedPoints.length / 800);
-        optimizedPoints = optimizedPoints.filter((_, idx) => (idx % samplingRate === 0) || (idx === optimizedPoints.length - 1));
+        const factor = Math.ceil(optimizedPoints.length / 800);
+        optimizedPoints = optimizedPoints.filter((_, i) => i % factor === 0 || i === optimizedPoints.length - 1);
       }
 
-      const { error } = await supabase.from('routes').insert([{
+      const payload = {
         id: generateUUID(),
         user_id: user.id,
         title: newRoute.title.trim() || `Missão em ${new Date().toLocaleDateString()}`,
@@ -303,20 +302,19 @@ const App: React.FC = () => {
         status: newRoute.status,
         thumbnail: newRoute.thumbnail || 'https://images.unsplash.com/photo-1558981403-c5f91cbba527?q=80&w=800&auto=format&fit=crop',
         is_official: user.role === 'admin'
-      }]);
+      };
+
+      const { error } = await supabase.from('routes').insert([payload]);
 
       if (error) throw error;
       
-      // Pequeno delay e confirmação de sucesso antes de navegar
-      await new Promise(res => setTimeout(res, 300));
+      // 3. Aguarda confirmação e atualiza mural
       await fetchRoutes();
-      
-      // Mudança garantida de visão apenas após confirmação do DB
       setView('my-routes');
     } catch (err: any) {
-      console.error("Erro crítico ao salvar missão:", err);
-      alert("Não foi possível salvar a missão no radar agora. Verifique seu sinal de internet e tente novamente.");
-      throw err; // Repropaga para o RouteTracker lidar com o isSaving
+      console.error("Erro ao salvar no Supabase:", err);
+      alert("Falha ao salvar missão. Verifique sua conexão e tente novamente.");
+      throw err;
     } finally {
       setIsUpdating(false);
     }

@@ -8,7 +8,7 @@ interface RouteTrackerProps {
 }
 
 const calculateDistance = (p1: RoutePoint, p2: RoutePoint): number => {
-  const R = 6371;
+  const R = 6371; // Raio da Terra em km
   const dLat = (p2.lat - p1.lat) * Math.PI / 180;
   const dLon = (p2.lng - p1.lng) * Math.PI / 180;
   const a = 
@@ -51,18 +51,31 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
       return; 
     }
 
+    // Reset total de estados antes de iniciar nova gravação
+    resetState();
     setIsRecording(true);
     setStartTime(Date.now());
-    setPoints([]);
-    pointsRef.current = [];
-    setTotalDistance(0);
-    distanceRef.current = 0;
 
-    // Monitoramento com alta frequência e precisão
+    // 1. Captura imediata do ponto inicial
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const firstPoint: RoutePoint = { 
+          lat: Number(pos.coords.latitude.toFixed(6)), 
+          lng: Number(pos.coords.longitude.toFixed(6)), 
+          timestamp: pos.timestamp 
+        };
+        pointsRef.current = [firstPoint];
+        setPoints([firstPoint]);
+      },
+      (err) => console.warn("Aguardando sinal GPS estável...", err),
+      { enableHighAccuracy: true }
+    );
+
+    // 2. Iniciar monitoramento contínuo
     watchId.current = navigator.geolocation.watchPosition(
       (pos) => {
-        // Ignorar pontos com precisão muito baixa (ruído inicial)
-        if (pos.coords.accuracy > 80) return;
+        // Tolerância aumentada para 150m para evitar perda de sinal em movimento
+        if (pos.coords.accuracy > 150) return;
 
         const newPoint: RoutePoint = { 
           lat: Number(pos.coords.latitude.toFixed(6)), 
@@ -74,12 +87,11 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
           const last = pointsRef.current[pointsRef.current.length - 1];
           const dist = calculateDistance(last, newPoint);
           
-          // Sensibilidade de 4 metros para evitar "saltos" mas manter o rastro fluido
-          if (dist > 0.004) {
+          // Sensibilidade de 5 metros para registrar movimento real
+          if (dist > 0.005) {
             distanceRef.current += dist;
             setTotalDistance(distanceRef.current);
             pointsRef.current = [...pointsRef.current, newPoint];
-            // Atualização de estado imediata para o MapView
             setPoints([...pointsRef.current]);
           }
         } else {
@@ -87,9 +99,7 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
           setPoints([newPoint]);
         }
       },
-      (error) => {
-        console.error("Erro no GPS:", error);
-      },
+      (error) => console.error("Erro de Radar:", error),
       { 
         enableHighAccuracy: true, 
         timeout: 20000, 
@@ -127,7 +137,7 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
           status: 'concluída'
         });
       } catch (err) {
-        console.error("Falha no salvamento:", err);
+        console.error("Erro crítico ao salvar missão:", err);
       }
     }
 
@@ -198,7 +208,7 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
           <div className="flex items-center gap-4 bg-zinc-900/40 p-5 rounded-2xl border border-zinc-800">
             <Shield className="text-red-600 shrink-0" size={18} />
             <p className="text-[9px] text-zinc-500 font-bold uppercase italic leading-relaxed">
-              Mantenha o aplicativo em foco para garantir que o rastro da missão seja capturado sem falhas.
+              Dica: Mantenha a tela ligada para garantir que o rastro da missão seja capturado sem falhas.
             </p>
           </div>
         </div>
