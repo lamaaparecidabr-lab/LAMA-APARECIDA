@@ -11,8 +11,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ user, currentView, setView, on
   const menuItems = [
     { id: 'home', icon: Home, label: 'Início' },
     { id: 'clubhouse', icon: MapPin, label: 'Sede' },
-    { id: 'explorer', icon: Compass, label: 'Icônicas' },
     { id: 'gallery', icon: ImageIcon, label: 'Galeria' },
+    { id: 'explorer', icon: Compass, label: 'Icônicas' },
     { id: 'tracking', icon: Radio, label: 'Gravar' },
     { id: 'my-routes', icon: Map, label: 'Mural' },
     { id: 'profile', icon: User, label: 'Perfil' },
