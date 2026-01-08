@@ -18,7 +18,7 @@ export const MapView: React.FC<MapViewProps> = ({ points, className = "h-64", is
     const L = (window as any).L;
     if (!L || !mapRef.current || leafletMap.current) return;
 
-    // Inicializa o mapa com foco padrão
+    // Inicializa o mapa com foco padrão em Aparecida de Goiânia
     leafletMap.current = L.map(mapRef.current, {
       zoomControl: isInteractive,
       dragging: isInteractive,
@@ -30,10 +30,13 @@ export const MapView: React.FC<MapViewProps> = ({ points, className = "h-64", is
       maxZoom: 19,
     }).addTo(leafletMap.current);
 
-    // Ajuste forçado de tamanho
-    setTimeout(() => {
+    // Ajuste forçado de tamanho inicial
+    const invalidate = () => {
       if (leafletMap.current) leafletMap.current.invalidateSize();
-    }, 400);
+    };
+    
+    setTimeout(invalidate, 100);
+    setTimeout(invalidate, 500);
 
     return () => {
       if (leafletMap.current) {
@@ -60,7 +63,7 @@ export const MapView: React.FC<MapViewProps> = ({ points, className = "h-64", is
     const latLngs = points.map(p => [p.lat, p.lng]);
     
     if (latLngs.length > 0) {
-      // Cria ou atualiza o traçado amarelo
+      // Gerencia a linha do traçado
       if (polylineLayer.current) {
         polylineLayer.current.setLatLngs(latLngs);
       } else {
@@ -75,24 +78,37 @@ export const MapView: React.FC<MapViewProps> = ({ points, className = "h-64", is
       const firstPoint = latLngs[0];
       const latestPoint = latLngs[latLngs.length - 1];
 
-      // Marcador inicial
+      // Marcador de início da missão
       if (!startMarker.current) {
-        startMarker.current = L.circleMarker(firstPoint, { radius: 7, color: '#eab308', fillOpacity: 1, weight: 2 }).addTo(leafletMap.current);
+        startMarker.current = L.circleMarker(firstPoint, { 
+          radius: 7, 
+          color: '#eab308', 
+          fillColor: '#eab308',
+          fillOpacity: 1, 
+          weight: 2 
+        }).addTo(leafletMap.current);
       }
 
-      // Marcador de posição atual (ponto vermelho pulsante/visível)
+      // Marcador de posição atual em tempo real
       if (!endMarker.current) {
-        endMarker.current = L.circleMarker(latestPoint, { radius: 6, color: '#ef4444', fillOpacity: 1, weight: 2 }).addTo(leafletMap.current);
+        endMarker.current = L.circleMarker(latestPoint, { 
+          radius: 6, 
+          color: '#ef4444', 
+          fillColor: '#ef4444',
+          fillOpacity: 1, 
+          weight: 2 
+        }).addTo(leafletMap.current);
       } else {
         endMarker.current.setLatLng(latestPoint);
       }
 
-      // Se estiver gravando (não interativo), centraliza no ponto atual
+      // Comportamento de foco
       if (!isInteractive) {
-        leafletMap.current.panTo(latestPoint);
+        // Segue o motociclista suavemente
+        leafletMap.current.panTo(latestPoint, { animate: true, duration: 0.5 });
         if (latLngs.length === 1) leafletMap.current.setZoom(17);
       } else if (latLngs.length > 1) {
-        // No mural ou detalhes, ajusta para ver a rota toda
+        // No mural, ajusta para ver o trajeto completo
         leafletMap.current.fitBounds(polylineLayer.current.getBounds(), { padding: [30, 30] });
       }
     }

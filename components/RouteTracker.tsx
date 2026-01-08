@@ -29,6 +29,7 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
   const [startTime, setStartTime] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const watchId = useRef<number | null>(null);
+  const wakeLock = useRef<any>(null);
 
   useEffect(() => {
     let interval: any;
@@ -42,10 +43,13 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
       if (watchId.current !== null) {
         navigator.geolocation.clearWatch(watchId.current);
       }
+      if (wakeLock.current) {
+        wakeLock.current.release().catch(() => {});
+      }
     };
   }, [isRecording, startTime]);
 
-  const startTracking = () => {
+  const startTracking = async () => {
     if (!navigator.geolocation) { 
       alert("Erro: Este dispositivo não possui suporte a Radar GPS."); 
       return; 
@@ -55,53 +59,59 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
     setIsRecording(true);
     setStartTime(Date.now());
 
-    // 1. Captura imediata do ponto zero para destravar o velocímetro
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const firstPoint: RoutePoint = { 
-          lat: Number(pos.coords.latitude.toFixed(6)), 
-          lng: Number(pos.coords.longitude.toFixed(6)), 
-          timestamp: pos.timestamp 
-        };
-        pointsRef.current = [firstPoint];
-        setPoints([firstPoint]);
-      },
-      (err) => console.warn("Aguardando satélite...", err),
-      { enableHighAccuracy: true }
+    // Tentar manter a tela ligada durante a missão (Wake Lock)
+    if ('wakeLock' in navigator) {
+      try {
+        wakeLock.current = await (navigator as any).wakeLock.request('screen');
+      } catch (err) {
+        console.warn("Wake Lock não disponível");
+      }
+    }
+
+    const handleNewPosition = (pos: GeolocationPosition) => {
+      // Relaxamos o filtro de precisão para 150m para garantir captura em áreas urbanas
+      if (pos.coords.accuracy > 150) return;
+
+      const newPoint: RoutePoint = { 
+        lat: Number(pos.coords.latitude.toFixed(6)), 
+        lng: Number(pos.coords.longitude.toFixed(6)), 
+        timestamp: pos.timestamp 
+      };
+
+      setPoints(prevPoints => {
+        if (prevPoints.length === 0) {
+          pointsRef.current = [newPoint];
+          return [newPoint];
+        }
+
+        const last = prevPoints[prevPoints.length - 1];
+        const dist = calculateDistance(last, newPoint);
+        
+        // Sensibilidade de 1 metro para garantir que qualquer movimento saia do 0.00km
+        if (dist > 0.001) {
+          distanceRef.current += dist;
+          setTotalDistance(distanceRef.current);
+          const updated = [...prevPoints, newPoint];
+          pointsRef.current = updated;
+          return updated;
+        }
+        return prevPoints;
+      });
+    };
+
+    // Captura inicial para destravar o sistema instantaneamente
+    navigator.geolocation.getCurrentPosition(handleNewPosition, 
+      (err) => console.warn("GPS inicial falhou, aguardando watch...", err),
+      { enableHighAccuracy: true, timeout: 5000 }
     );
 
-    // 2. Iniciar monitoramento persistente
+    // Monitoramento contínuo de alta frequência
     watchId.current = navigator.geolocation.watchPosition(
-      (pos) => {
-        // Ignorar pontos com precisão muito baixa (> 100m) para evitar teletransporte no mapa
-        if (pos.coords.accuracy > 100) return;
-
-        const newPoint: RoutePoint = { 
-          lat: Number(pos.coords.latitude.toFixed(6)), 
-          lng: Number(pos.coords.longitude.toFixed(6)), 
-          timestamp: pos.timestamp 
-        };
-
-        if (pointsRef.current.length > 0) {
-          const last = pointsRef.current[pointsRef.current.length - 1];
-          const dist = calculateDistance(last, newPoint);
-          
-          // Sensibilidade de 2 metros para garantir que o trajeto acompanhe a moto
-          if (dist > 0.002) {
-            distanceRef.current += dist;
-            setTotalDistance(distanceRef.current);
-            pointsRef.current = [...pointsRef.current, newPoint];
-            setPoints([...pointsRef.current]);
-          }
-        } else {
-          pointsRef.current = [newPoint];
-          setPoints([newPoint]);
-        }
-      },
-      (error) => console.error("Falha no Radar:", error),
+      handleNewPosition,
+      (error) => console.error("Erro de Radar:", error),
       { 
         enableHighAccuracy: true, 
-        timeout: 15000, 
+        timeout: 10000, 
         maximumAge: 0 
       }
     );
@@ -113,13 +123,17 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
       watchId.current = null;
     }
 
+    if (wakeLock.current) {
+      wakeLock.current.release().catch(() => {});
+      wakeLock.current = null;
+    }
+
     const finalPoints = [...pointsRef.current];
     const finalDistance = distanceRef.current;
     const finalElapsed = elapsed;
 
-    // Reduzi a exigência para 2 pontos reais para evitar frustração em testes curtos
-    if (finalPoints.length < 2) {
-      alert("Atenção: Movimente-se mais para que o Radar grave o trajeto.");
+    if (finalPoints.length < 2 || finalDistance < 0.01) {
+      alert("Trajeto insuficiente. Movimente-se um pouco mais para que o Radar grave sua missão.");
       resetState();
       return;
     }
@@ -201,7 +215,7 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
               className="w-full bg-red-600 hover:bg-red-700 text-white py-6 rounded-2xl font-black uppercase text-[12px] flex items-center justify-center gap-3 animate-pulse shadow-xl active:scale-95 disabled:opacity-50"
             >
               {isSaving ? <Loader2 className="animate-spin" size={20} /> : <Square size={20} fill="currentColor" />} 
-              {isSaving ? 'Salvando Missão...' : 'Finalizar Missão'}
+              {isSaving ? 'Sincronizando...' : 'Finalizar Missão'}
             </button>
           )}
           
