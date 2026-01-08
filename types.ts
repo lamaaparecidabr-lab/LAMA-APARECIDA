@@ -29,4 +29,4 @@ export interface Route {
   isOfficial?: boolean;
 }
 
-export type View = 'home' | 'explorer' | 'my-routes' | 'profile' | 'tracking' | 'gallery' | 'clubhouse' | 'admin';
+export type View = 'home' | 'explorer' | 'my-routes' | 'profile' | 'tracking' | 'gallery' | 'clubhouse' | 'admin' | 'member-routes';

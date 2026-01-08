@@ -8,7 +8,7 @@ import {
   MapPin, Radio, Award, Loader2, Save, X, Camera, 
   Zap, MessageCircle, Briefcase, Info, Cake, 
   Volume2, VolumeX, Maximize2, Navigation, ChevronRight,
-  Star, Users, ExternalLink, Upload, Trash2
+  Star, Users, ExternalLink, Upload, Trash2, ArrowLeft
 } from 'lucide-react';
 import { getRouteInsights } from './services/geminiService';
 import { supabase } from './services/supabaseClient';
@@ -28,7 +28,7 @@ const iconicRoutes: Route[] = [
     difficulty: 'Lendária',
     points: [],
     status: 'planejada',
-    thumbnail: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/09/3c/e7/c9/serra-rio-do-rastro.jpg?w=600&h=400&s=1',
+    thumbnail: 'https://github.com/lamaaparecidabr-lab/LAMA-APARECIDA-2/blob/main/components/serra-do-rio-do-rastro.jpg?raw=true',
     isOfficial: true
   },
   {
@@ -68,7 +68,6 @@ const iconicRoutes: Route[] = [
 
 const ADMIN_EMAIL = 'lama.aparecidabr@gmail.com';
 
-// Fallback UUID generator if crypto.randomUUID is not available
 const generateUUID = () => {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -98,25 +97,18 @@ const App: React.FC = () => {
 
   useEffect(() => {
     let mounted = true;
-
     const safetyTimer = setTimeout(() => {
-      if (mounted && isLoading) {
-        setIsLoading(false);
-      }
+      if (mounted && isLoading) setIsLoading(false);
     }, 10000);
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (!mounted) return;
-      
-      if (session?.user) {
-        await syncUserData(session.user);
-      } else {
+      if (session?.user) await syncUserData(session.user);
+      else {
         setIsAuthenticated(false);
         setUser(null);
         setIsLoading(false);
       }
     });
-
     return () => {
       mounted = false;
       clearTimeout(safetyTimer);
@@ -134,7 +126,6 @@ const App: React.FC = () => {
   const syncUserData = async (authUser: any) => {
     if (syncInProgress.current) return;
     syncInProgress.current = true;
-    
     try {
       const basicUserData: User = {
         id: authUser.id,
@@ -143,16 +134,9 @@ const App: React.FC = () => {
         avatar: authUser.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${authUser.id}`,
         role: authUser.email === ADMIN_EMAIL ? 'admin' : 'member'
       };
-      
       setUser(basicUserData);
       setIsAuthenticated(true);
-
-      const { data: profileData, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', authUser.id)
-        .maybeSingle();
-
+      const { data: profileData, error } = await supabase.from('profiles').select('*').eq('id', authUser.id).maybeSingle();
       if (profileData && !error) {
         const fullUserData: User = {
           ...basicUserData,
@@ -163,7 +147,6 @@ const App: React.FC = () => {
           associationType: profileData.association_type || undefined,
           role: profileData.role || basicUserData.role
         };
-        
         setUser(fullUserData);
         setEditForm({
           name: fullUserData.name,
@@ -183,11 +166,7 @@ const App: React.FC = () => {
 
   const fetchMembers = async () => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, name, avatar_url, birth_date, bike_model, association_type')
-        .order('name', { ascending: true });
-      
+      const { data, error } = await supabase.from('profiles').select('id, name, avatar_url, birth_date, bike_model, association_type').order('name', { ascending: true });
       if (error) throw error;
       if (data) {
         setAllMembers(data.map((m: any) => ({
@@ -207,11 +186,7 @@ const App: React.FC = () => {
 
   const fetchRoutes = async () => {
     try {
-      const { data, error } = await supabase
-        .from('routes')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
+      const { data, error } = await supabase.from('routes').select('*').order('created_at', { ascending: false });
       if (error) throw error;
       if (data) {
         setRoutes(data.map((r: any) => ({
@@ -251,7 +226,6 @@ const App: React.FC = () => {
     e.preventDefault();
     if (!user) return;
     setIsUpdating(true);
-
     try {
       const { error } = await supabase.from('profiles').upsert({
         id: user.id,
@@ -262,9 +236,7 @@ const App: React.FC = () => {
         association_type: editForm.associationType || null,
         updated_at: new Date().toISOString()
       });
-
       if (error) throw error;
-
       setUser({ ...user, ...editForm });
       setIsEditingProfile(false);
       fetchMembers();
@@ -289,22 +261,15 @@ const App: React.FC = () => {
       } finally {
         setIsUpdating(false);
       }
-    } else if (newPassword) {
-      alert("A senha deve conter pelo menos 6 caracteres.");
-    }
+    } else if (newPassword) alert("A senha deve conter pelo menos 6 caracteres.");
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        alert("A imagem deve ter no máximo 2MB.");
-        return;
-      }
+      if (file.size > 2 * 1024 * 1024) { alert("A imagem deve ter no máximo 2MB."); return; }
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setEditForm(prev => ({ ...prev, avatar: reader.result as string }));
-      };
+      reader.onloadend = () => setEditForm(prev => ({ ...prev, avatar: reader.result as string }));
       reader.readAsDataURL(file);
     }
   };
@@ -312,10 +277,9 @@ const App: React.FC = () => {
   const handleSaveRoute = async (newRoute: Route) => {
     if (!user) return;
     setIsUpdating(true);
-
     try {
       const { error } = await supabase.from('routes').insert([{
-        id: generateUUID(), // Garantir um ID não nulo gerado no cliente
+        id: generateUUID(),
         user_id: user.id,
         title: newRoute.title,
         description: newRoute.description,
@@ -326,13 +290,11 @@ const App: React.FC = () => {
         thumbnail: newRoute.thumbnail || 'https://images.unsplash.com/photo-1558981403-c5f91cbba527?q=80&w=800&auto=format&fit=crop',
         is_official: user.role === 'admin'
       }]);
-
       if (error) throw error;
-
       await fetchRoutes();
       setView('my-routes');
     } catch (err: any) {
-      alert("Erro ao salvar missão no banco de dados: " + (err.message || "Erro desconhecido. Verifique as configurações do banco."));
+      alert("Erro ao salvar missão no banco de dados: " + (err.message || "Erro desconhecido."));
     } finally {
       setIsUpdating(false);
     }
@@ -363,11 +325,8 @@ const App: React.FC = () => {
   };
 
   const handleLogout = async () => {
-    try {
-      await supabase.auth.signOut();
-    } catch (err) {
-      console.error("Erro ao encerrar sessão:", err);
-    } finally {
+    try { await supabase.auth.signOut(); } catch (err) { console.error("Erro ao encerrar sessão:", err); }
+    finally {
       setIsAuthenticated(false);
       setUser(null);
       setIsLoading(false);
@@ -402,9 +361,7 @@ const App: React.FC = () => {
       if (!m.birthDate) return false;
       const birthMonth = new Date(m.birthDate).getUTCMonth();
       return birthMonth === targetMonth;
-    }).sort((a, b) => {
-      return new Date(a.birthDate!).getUTCDate() - new Date(b.birthDate!).getUTCDate();
-    });
+    }).sort((a, b) => new Date(a.birthDate!).getUTCDate() - new Date(b.birthDate!).getUTCDate());
   };
 
   const getSortedMembersByBirthMonth = () => {
@@ -429,6 +386,13 @@ const App: React.FC = () => {
   };
 
   const isAdmin = user?.role === 'admin' || user?.email === ADMIN_EMAIL;
+
+  const membersWithRoutes = useMemo(() => {
+    return allMembers.map(member => ({
+      ...member,
+      memberRoutes: routes.filter(r => r.user_id === member.id)
+    })).filter(m => m.memberRoutes.length > 0);
+  }, [allMembers, routes]);
 
   if (isLoading) return (
     <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-6">
@@ -455,9 +419,6 @@ const App: React.FC = () => {
                 <button type="submit" className="w-full bg-yellow-500 text-black py-5 rounded-2xl font-black uppercase flex items-center justify-center gap-3">Entrar <Zap size={16} /></button>
               </form>
             </div>
-            <footer className="mt-10 py-6 text-center">
-              <p className="text-[10px] italic text-zinc-600 uppercase tracking-widest">Developed by Antunes Rider</p>
-            </footer>
           </div>
         ) : (
           <div className="animate-in fade-in duration-700 flex-1 flex flex-col">
@@ -468,11 +429,7 @@ const App: React.FC = () => {
                     <div className="flex items-center gap-10">
                       <div className="relative group shrink-0">
                         <div className="absolute inset-0 bg-yellow-500/20 blur-3xl rounded-full scale-150 opacity-0 group-hover:opacity-100 transition-all duration-700"></div>
-                        <img 
-                          src={LAMA_LOGO_URL} 
-                          alt="Logo" 
-                          className="relative w-28 h-28 object-contain filter drop-shadow-[0_0_15px_rgba(234,179,8,0.3)] transform group-hover:scale-110 transition-transform duration-500" 
-                        />
+                        <img src={LAMA_LOGO_URL} alt="Logo" className="relative w-28 h-28 object-contain filter drop-shadow-[0_0_15px_rgba(234,179,8,0.3)] transform group-hover:scale-110 transition-transform duration-500" />
                       </div>
                       <div>
                         <span className="text-yellow-500 font-black uppercase tracking-widest text-xs md:text-lg">LATIN AMERICAN MOTORCYCLE ASSOCIATION</span>
@@ -481,7 +438,6 @@ const App: React.FC = () => {
                       </div>
                     </div>
                   </header>
-
                   <div className="space-y-6">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div className="flex items-center gap-3">
@@ -511,7 +467,6 @@ const App: React.FC = () => {
                     <div className="w-2 h-10 bg-yellow-500 rounded-full"></div>
                     <h2 className="text-4xl font-oswald font-black text-white italic uppercase tracking-tighter">Área do <span className="text-yellow-500">Membro</span></h2>
                   </header>
-
                   <div className="relative bg-zinc-950 p-10 md:p-16 rounded-[3rem] md:rounded-[4rem] border border-zinc-900 overflow-hidden shadow-3xl">
                     {isEditingProfile ? (
                       <form onSubmit={handleUpdateProfile} className="space-y-8 relative z-10">
@@ -591,14 +546,6 @@ const App: React.FC = () => {
                     <div className="w-2 h-10 bg-red-600 rounded-full"></div>
                     <h2 className="text-4xl font-oswald font-black text-white italic uppercase tracking-tighter">Mural de <span className="text-yellow-500">Missões</span></h2>
                   </header>
-
-                  <div className="flex flex-col items-center justify-center gap-2">
-                    <div className="flex items-center gap-2">
-                      <Cake className="text-pink-500" size={18} />
-                      <h3 className="text-lg font-oswald font-black text-white uppercase italic tracking-widest">Aniversários</h3>
-                    </div>
-                  </div>
-
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-0">
                     <div className="bg-zinc-950 p-6 rounded-[2rem] border border-zinc-900 shadow-xl relative overflow-hidden group">
                       <div className="absolute top-0 right-0 p-4 text-yellow-500/10 group-hover:text-yellow-500/20 transition-colors"><Cake size={60} /></div>
@@ -616,12 +563,9 @@ const App: React.FC = () => {
                               <span className="text-[10px] font-black text-yellow-500 font-mono italic">{new Date(member.birthDate!).getUTCDate().toString().padStart(2, '0')}</span>
                             </div>
                           ))
-                        ) : (
-                          <p className="text-[10px] text-zinc-600 italic uppercase">Sem aniversários este mês</p>
-                        )}
+                        ) : ( <p className="text-[10px] text-zinc-600 italic uppercase">Sem aniversários este mês</p> )}
                       </div>
                     </div>
-
                     <div className="bg-zinc-950 p-6 rounded-[2rem] border border-zinc-900 shadow-xl relative overflow-hidden group">
                       <div className="absolute top-0 right-0 p-4 text-zinc-500/10 group-hover:text-zinc-500/20 transition-colors"><Star size={60} /></div>
                       <h3 className="text-lg font-oswald font-black text-white uppercase italic mb-4 flex items-center gap-2">
@@ -638,13 +582,10 @@ const App: React.FC = () => {
                               <span className="text-[10px] font-black text-zinc-500 font-mono italic">{new Date(member.birthDate!).getUTCDate().toString().padStart(2, '0')}</span>
                             </div>
                           ))
-                        ) : (
-                          <p className="text-[10px] text-zinc-600 italic uppercase">Sem aniversários no próximo mês</p>
-                        )}
+                        ) : ( <p className="text-[10px] text-zinc-600 italic uppercase">Sem aniversários no próximo mês</p> )}
                       </div>
                     </div>
                   </div>
-
                   <div className="space-y-8">
                     <h3 className="text-2xl font-oswald font-black text-white uppercase italic tracking-widest flex items-center gap-3">
                       <Map size={24} className="text-red-600" /> Minhas Missões
@@ -653,17 +594,7 @@ const App: React.FC = () => {
                       {routes.filter(r => r.user_id === user?.id).length > 0 ? (
                         routes.filter(r => r.user_id === user?.id).map(route => (
                           <div key={route.id} className="bg-zinc-950 rounded-[2.5rem] border border-zinc-900 overflow-hidden shadow-2xl group flex flex-col relative cursor-pointer" onClick={() => setSelectedRoute(route)}>
-                            <button 
-                              onClick={(e) => { 
-                                e.stopPropagation(); 
-                                e.preventDefault();
-                                handleDeleteRoute(route.id); 
-                              }} 
-                              className="absolute top-4 right-4 z-[50] p-3 bg-red-600 text-white rounded-full backdrop-blur-md opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all shadow-xl pointer-events-auto active:scale-95"
-                              title="Excluir Missão"
-                            >
-                              <Trash2 size={16} />
-                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); handleDeleteRoute(route.id); }} className="absolute top-4 right-4 z-[50] p-3 bg-red-600 text-white rounded-full backdrop-blur-md opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all shadow-xl active:scale-95"><Trash2 size={16} /></button>
                             <MapView points={route.points} className="h-48 grayscale group-hover:grayscale-0 transition-all duration-500" />
                             <div className="p-8">
                               <h3 className="text-2xl font-oswald font-black text-white uppercase italic truncate">{route.title}</h3>
@@ -674,42 +605,7 @@ const App: React.FC = () => {
                             </div>
                           </div>
                         ))
-                      ) : (
-                        <div className="col-span-full py-20 text-center text-zinc-700 uppercase italic text-sm">Nenhuma missão gravada por você ainda...</div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {currentView === 'gallery' && (
-                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 h-full">
-                  <header>
-                    <h2 className="text-4xl font-oswald font-bold uppercase text-white italic">Nossa <span className="text-yellow-500">Galeria</span></h2>
-                    <p className="text-zinc-400 mt-2">Registros históricos e momentos de irmandade em Aparecida.</p>
-                  </header>
-
-                  <div className="relative bg-zinc-900 rounded-[3rem] border border-zinc-800 overflow-hidden min-h-[500px] flex flex-col items-center justify-center p-12 text-center shadow-2xl">
-                    <div className="absolute inset-0 opacity-10 grayscale">
-                      <img src="https://images.unsplash.com/photo-1558981403-c5f91cbba527?q=80&w=2070&auto=format&fit=crop" alt="" className="w-full h-full object-cover" />
-                    </div>
-                    
-                    <div className="relative z-10 space-y-8 max-w-xl">
-                      <div className="bg-yellow-500/10 p-6 rounded-full w-fit mx-auto border border-yellow-500/20">
-                        <ImageIcon size={64} className="text-yellow-500" />
-                      </div>
-                      <h3 className="text-3xl font-oswald font-bold text-white uppercase italic">Explore Nossa História no <span className="text-blue-500">Facebook</span></h3>
-                      <p className="text-zinc-400 text-lg leading-relaxed">
-                        Mantemos nossa galeria oficial atualizada em nossa página do Facebook. Clique no botão abaixo para ver as fotos das nossas últimas rotas, eventos e encontros.
-                      </p>
-                      <a 
-                        href="https://www.facebook.com/lamaaparecidabr/photos" 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-3 bg-yellow-500 hover:bg-yellow-600 text-black px-10 py-5 rounded-2xl font-bold text-lg transition-all transform hover:scale-105 shadow-xl shadow-yellow-500/20 uppercase tracking-widest"
-                      >
-                        ACESSAR GALERIA OFICIAL <ExternalLink size={20} />
-                      </a>
+                      ) : ( <div className="col-span-full py-20 text-center text-zinc-700 uppercase italic text-sm">Nenhuma missão gravada ainda...</div> )}
                     </div>
                   </div>
                 </div>
@@ -735,18 +631,14 @@ const App: React.FC = () => {
                         <div className="p-10 flex-1 flex flex-col space-y-6">
                           <div className="flex items-start justify-between gap-4">
                             <h3 className="text-3xl font-oswald font-black text-white uppercase italic tracking-tighter flex-1">{route.title}</h3>
-                            <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border shrink-0 ${getDifficultyStyles(route.difficulty)}`}>
-                              {route.difficulty}
-                            </span>
+                            <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border shrink-0 ${getDifficultyStyles(route.difficulty)}`}>{route.difficulty}</span>
                           </div>
                           <p className="text-zinc-500 text-sm leading-relaxed">{route.description}</p>
                           <div className="flex items-center gap-2 text-zinc-600 font-bold text-[10px] uppercase tracking-widest">
                             <Navigation size={12} className="text-yellow-500" />
                             <span>Extensão: {route.distance}</span>
                           </div>
-                          <button onClick={() => fetchInsights(route)} className="w-full bg-zinc-800 hover:bg-yellow-500 hover:text-black text-white py-5 rounded-2xl font-black uppercase text-[10px] transition-all flex items-center justify-center gap-3">
-                            <Zap size={16} /> Briefing
-                          </button>
+                          <button onClick={() => fetchInsights(route)} className="w-full bg-zinc-800 hover:bg-yellow-500 hover:text-black text-white py-5 rounded-2xl font-black uppercase text-[10px] transition-all flex items-center justify-center gap-3"><Zap size={16} /> Briefing</button>
                         </div>
                       </div>
                     ))}
@@ -759,10 +651,7 @@ const App: React.FC = () => {
                   <header className="flex items-center gap-4"><div className="w-2 h-10 bg-yellow-500 rounded-full"></div><h2 className="text-5xl font-oswald font-black text-white italic uppercase tracking-tighter">Casa <span className="text-yellow-500">Club</span></h2></header>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
                     <div className="bg-zinc-950 p-8 md:p-12 rounded-[3rem] border border-zinc-900 flex flex-col justify-center space-y-8">
-                      <h3 className="text-3xl font-oswald font-black text-white uppercase italic tracking-tighter flex items-center gap-3">
-                        <Shield className="text-yellow-500" size={28} />
-                        Ponto de <span className="text-yellow-500">Encontro</span>
-                      </h3>
+                      <h3 className="text-3xl font-oswald font-black text-white uppercase italic tracking-tighter flex items-center gap-3"><Shield className="text-yellow-500" size={28} /> Ponto de <span className="text-yellow-500">Encontro</span></h3>
                       <p className="text-zinc-400 text-lg">{CLUBHOUSE_ADDRESS}</p>
                       <div className="flex flex-col sm:flex-row gap-4">
                         <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(CLUBHOUSE_MARK_NAME)}`} target="_blank" className="flex-1 bg-white text-black py-4 rounded-2xl font-black uppercase text-center flex items-center justify-center gap-3">Google Maps <ExternalLink size={18}/></a>
@@ -792,31 +681,93 @@ const App: React.FC = () => {
                         <tbody className="divide-y divide-zinc-900/50">
                           {getSortedMembersByBirthMonth().map((member) => (
                             <tr key={member.id} className="group hover:bg-zinc-900/30 transition-all">
-                              <td className="py-6 px-4">
-                                <div className="flex items-center gap-4">
-                                  <img src={member.avatar} className="w-12 h-12 rounded-2xl border border-zinc-800 object-cover" alt={member.name} />
-                                  <span className="font-bold text-white uppercase text-sm">{member.name}</span>
-                                </div>
-                              </td>
-                              <td className="py-6 px-4">
-                                <span className="text-yellow-500 font-mono text-sm font-black italic">{formatDate(member.birthDate)}</span>
-                              </td>
-                              <td className="py-6 px-4">
-                                <span className="font-bold text-zinc-400 text-sm italic">{member.bikeModel || 'N/A'}</span>
-                              </td>
-                              <td className="py-6 px-4">
-                                <span className="bg-zinc-900 text-zinc-400 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border border-zinc-800">{member.associationType || 'ASSOCIADO'}</span>
-                              </td>
+                              <td className="py-6 px-4"><div className="flex items-center gap-4"><img src={member.avatar} className="w-12 h-12 rounded-2xl border border-zinc-800 object-cover" /><span className="font-bold text-white uppercase text-sm">{member.name}</span></div></td>
+                              <td className="py-6 px-4"><span className="text-yellow-500 font-mono text-sm font-black italic">{formatDate(member.birthDate)}</span></td>
+                              <td className="py-6 px-4"><span className="font-bold text-zinc-400 text-sm italic">{member.bikeModel || 'N/A'}</span></td>
+                              <td className="py-6 px-4"><span className="bg-zinc-900 text-zinc-400 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border border-zinc-800">{member.associationType || 'ASSOCIADO'}</span></td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
+                    {/* Botão de acesso exclusivo para as rotas dos membros */}
+                    <div className="mt-12 flex justify-center border-t border-zinc-900 pt-12">
+                      <button onClick={() => setView('member-routes')} className="bg-yellow-500 hover:bg-yellow-600 text-black px-12 py-5 rounded-2xl font-black uppercase flex items-center gap-4 transition-all shadow-xl shadow-yellow-500/10 active:scale-95">
+                        <Map size={20} /> Ver Rotas de Todos os Membros
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {currentView === 'member-routes' && isAdmin && (
+                <div className="space-y-12 animate-in fade-in slide-in-from-bottom-8 duration-700">
+                  <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-2 h-10 bg-yellow-500 rounded-full"></div>
+                      <h2 className="text-4xl font-oswald font-black text-white italic uppercase tracking-tighter">Rotas dos <span className="text-yellow-500">Membros</span></h2>
+                    </div>
+                    <button onClick={() => setView('admin')} className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 text-zinc-400 px-6 py-3 rounded-xl font-black uppercase text-[10px] hover:text-white transition-all shadow-xl">
+                      <ArrowLeft size={16} /> Voltar ao Painel
+                    </button>
+                  </header>
+                  
+                  <div className="space-y-20">
+                    {membersWithRoutes.length > 0 ? (
+                      membersWithRoutes.map(member => (
+                        <div key={member.id} className="space-y-8">
+                          <div className="flex items-center gap-5 border-b border-zinc-900 pb-6 relative">
+                            <div className="w-1.5 h-10 bg-yellow-500/20 absolute -left-4 rounded-full"></div>
+                            <img src={member.avatar} className="w-16 h-16 rounded-[1.5rem] border-2 border-zinc-800 object-cover shadow-2xl" />
+                            <div>
+                              <h3 className="text-2xl font-oswald font-black text-white uppercase italic tracking-tighter">{member.name}</h3>
+                              <span className="text-[10px] text-yellow-500/50 font-black uppercase tracking-widest">{member.memberRoutes.length} MISSÕES REGISTRADAS</span>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            {member.memberRoutes.map(route => (
+                              <div key={route.id} className="bg-zinc-950 rounded-[2.5rem] border border-zinc-900 overflow-hidden shadow-2xl group flex flex-col relative cursor-pointer" onClick={() => setSelectedRoute(route)}>
+                                {isAdmin && (
+                                  <button onClick={(e) => { e.stopPropagation(); handleDeleteRoute(route.id); }} className="absolute top-4 right-4 z-[50] p-3 bg-red-600 text-white rounded-full backdrop-blur-md opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all shadow-xl active:scale-95"><Trash2 size={16} /></button>
+                                )}
+                                <MapView points={route.points} className="h-48 grayscale group-hover:grayscale-0 transition-all duration-500" />
+                                <div className="p-8">
+                                  <h3 className="text-2xl font-oswald font-black text-white uppercase italic truncate">{route.title}</h3>
+                                  <div className="flex items-center justify-between mt-4 text-zinc-500 text-[10px] font-bold uppercase tracking-widest">
+                                    <span>{route.distance} Rodados</span>
+                                    <span className="flex items-center gap-1 text-yellow-500 italic">VER TRAJETO <ChevronRight size={12}/></span>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="py-24 text-center">
+                        <Map size={48} className="mx-auto text-zinc-800 mb-4 opacity-20" />
+                        <p className="text-zinc-600 font-oswald font-black uppercase tracking-widest italic">Nenhuma rota gravada pelos membros ainda.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {currentView === 'gallery' && (
+                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 h-full">
+                  <header><h2 className="text-4xl font-oswald font-bold uppercase text-white italic">Nossa <span className="text-yellow-500">Galeria</span></h2></header>
+                  <div className="relative bg-zinc-900 rounded-[3rem] border border-zinc-800 overflow-hidden min-h-[500px] flex flex-col items-center justify-center p-12 text-center shadow-2xl">
+                    <div className="absolute inset-0 opacity-10 grayscale"><img src="https://images.unsplash.com/photo-1558981403-c5f91cbba527?q=80&w=2070&auto=format&fit=crop" className="w-full h-full object-cover" /></div>
+                    <div className="relative z-10 space-y-8 max-w-xl">
+                      <div className="bg-yellow-500/10 p-6 rounded-full w-fit mx-auto border border-yellow-500/20"><ImageIcon size={64} className="text-yellow-500" /></div>
+                      <h3 className="text-3xl font-oswald font-bold text-white uppercase italic">Explore Nossa História no <span className="text-blue-500">Facebook</span></h3>
+                      <p className="text-zinc-400 text-lg leading-relaxed">Mantemos nossa galeria oficial atualizada em nossa página do Facebook.</p>
+                      <a href="https://www.facebook.com/lamaaparecidabr/photos" target="_blank" className="inline-flex items-center gap-3 bg-yellow-500 hover:bg-yellow-600 text-black px-10 py-5 rounded-2xl font-bold text-lg transition-all transform hover:scale-105 shadow-xl uppercase tracking-widest">ACESSAR GALERIA OFICIAL <ExternalLink size={20} /></a>
+                    </div>
                   </div>
                 </div>
               )}
             </div>
-
             <footer className="mt-16 py-8 text-center border-t border-zinc-900/50">
               <p className="text-[10px] italic text-zinc-600 uppercase tracking-widest">Developed by Antunes Rider</p>
             </footer>
@@ -824,42 +775,23 @@ const App: React.FC = () => {
         )}
       </main>
 
-      {/* Modal de Trajeto Detalhado */}
       {selectedRoute && (
         <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4 md:p-10">
           <div className="absolute inset-0 bg-black/95 backdrop-blur-md" onClick={() => setSelectedRoute(null)}></div>
           <div className="relative w-full max-w-6xl bg-zinc-950 rounded-[3rem] border border-zinc-900 overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.8)] animate-in zoom-in-95 duration-300">
-            <div className="absolute top-6 right-6 z-50">
-              <button onClick={() => setSelectedRoute(null)} className="bg-zinc-900 p-4 rounded-full text-zinc-400 hover:text-white border border-zinc-800 transition-all"><X size={24}/></button>
-            </div>
+            <div className="absolute top-6 right-6 z-50"><button onClick={() => setSelectedRoute(null)} className="bg-zinc-900 p-4 rounded-full text-zinc-400 hover:text-white border border-zinc-800 transition-all"><X size={24}/></button></div>
             <div className="flex flex-col lg:flex-row h-full max-h-[90vh]">
-              <div className="flex-1 h-[40vh] lg:h-auto border-b lg:border-b-0 lg:border-r border-zinc-900">
-                <MapView points={selectedRoute.points} className="h-full rounded-none" isInteractive />
-              </div>
+              <div className="flex-1 h-[40vh] lg:h-auto border-b lg:border-b-0 lg:border-r border-zinc-900"><MapView points={selectedRoute.points} className="h-full rounded-none" isInteractive /></div>
               <div className="w-full lg:w-96 p-10 flex flex-col justify-between space-y-8 overflow-y-auto">
                 <div>
-                  <header className="space-y-2 mb-8">
-                    <span className="text-yellow-500 font-black uppercase text-[10px] tracking-widest">Detalhes da Missão</span>
-                    <h3 className="text-4xl font-oswald font-black text-white uppercase italic leading-none">{selectedRoute.title}</h3>
-                  </header>
+                  <header className="space-y-2 mb-8"><span className="text-yellow-500 font-black uppercase text-[10px] tracking-widest">Detalhes da Missão</span><h3 className="text-4xl font-oswald font-black text-white uppercase italic leading-none">{selectedRoute.title}</h3></header>
                   <div className="space-y-6">
-                    <div className="flex justify-between items-end border-b border-zinc-900 pb-4">
-                      <span className="text-[10px] font-black uppercase text-zinc-600">Distância Total</span>
-                      <span className="text-2xl font-oswald font-black text-white italic">{selectedRoute.distance}</span>
-                    </div>
-                    <div className="flex justify-between items-end border-b border-zinc-900 pb-4">
-                      <span className="text-[10px] font-black uppercase text-zinc-600">Dificuldade</span>
-                      <span className="text-2xl font-oswald font-black text-red-600 italic uppercase">{selectedRoute.difficulty}</span>
-                    </div>
+                    <div className="flex justify-between items-end border-b border-zinc-900 pb-4"><span className="text-[10px] font-black uppercase text-zinc-600">Distância Total</span><span className="text-2xl font-oswald font-black text-white italic">{selectedRoute.distance}</span></div>
+                    <div className="flex justify-between items-end border-b border-zinc-900 pb-4"><span className="text-[10px] font-black uppercase text-zinc-600">Dificuldade</span><span className="text-2xl font-oswald font-black text-red-600 italic uppercase">{selectedRoute.difficulty}</span></div>
                     <p className="text-zinc-500 text-sm leading-relaxed italic">"{selectedRoute.description}"</p>
                   </div>
                 </div>
-                <button 
-                  onClick={() => { handleDeleteRoute(selectedRoute.id); setSelectedRoute(null); }} 
-                  className="w-full flex items-center justify-center gap-3 bg-red-600 text-white py-5 rounded-2xl font-black uppercase text-[10px] hover:bg-red-700 transition-all shadow-xl active:scale-95"
-                >
-                  EXCLUIR REGISTRO <Trash2 size={16}/>
-                </button>
+                <button onClick={() => { handleDeleteRoute(selectedRoute.id); setSelectedRoute(null); }} className="w-full flex items-center justify-center gap-3 bg-red-600 text-white py-5 rounded-2xl font-black uppercase text-[10px] hover:bg-red-700 transition-all shadow-xl active:scale-95">EXCLUIR REGISTRO <Trash2 size={16}/></button>
               </div>
             </div>
           </div>
