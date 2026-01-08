@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { RouteTracker } from './components/RouteTracker';
@@ -408,7 +407,7 @@ const App: React.FC = () => {
       <Sidebar user={user} currentView={currentView} setView={setView} onLogout={handleLogout} />
       
       <main className="flex-1 p-5 md:p-12 pb-32 md:pb-12 max-w-[1400px] mx-auto w-full overflow-y-auto custom-scrollbar flex flex-col">
-        {!isAuthenticated && !['home', 'clubhouse'].includes(currentView) ? (
+        {!isAuthenticated && !['home', 'clubhouse', 'explorer', 'gallery'].includes(currentView) ? (
           <div className="flex-1 flex flex-col items-center justify-center p-4">
             <div className="w-full max-w-md bg-zinc-900 border border-zinc-800 p-8 rounded-[2.5rem] shadow-2xl">
               <div className="text-center mb-10">

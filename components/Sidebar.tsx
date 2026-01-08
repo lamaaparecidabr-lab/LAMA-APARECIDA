@@ -12,9 +12,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ user, currentView, setView, on
     { id: 'home', icon: Home, label: 'Início' },
     { id: 'clubhouse', icon: MapPin, label: 'Sede' },
     { id: 'explorer', icon: Compass, label: 'Icônicas' },
+    { id: 'gallery', icon: ImageIcon, label: 'Galeria' },
     { id: 'tracking', icon: Radio, label: 'Gravar' },
     { id: 'my-routes', icon: Map, label: 'Mural' },
-    { id: 'gallery', icon: ImageIcon, label: 'Galeria' },
     { id: 'profile', icon: User, label: 'Perfil' },
   ];
 
