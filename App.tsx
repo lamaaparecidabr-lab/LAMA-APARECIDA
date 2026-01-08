@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { RouteTracker } from './components/RouteTracker';
@@ -13,7 +14,7 @@ import {
 import { getRouteInsights } from './services/geminiService';
 import { supabase } from './services/supabaseClient';
 
-const LAMA_LOGO_URL = 'https://github.com/lamaaparecidabr-lab/LAMA-APARECIDA-2/blob/main/components/logo.jpg?raw=true';
+const LAMA_LOGO_URL = 'https://raw.githubusercontent.com/lamaaparecidabr-lab/LAMA-APARECIDA-2/main/components/logo.jpg';
 const YOUTUBE_ID = '-VzuMRXCizo';
 const CLUBHOUSE_COORDS = { lat: -16.7908906, lng: -49.2311547 };
 const CLUBHOUSE_ADDRESS = "R. X-011 - Sítios Santa Luzia, Aparecida de Goiânia - GO, 74922-570";
@@ -227,6 +228,7 @@ const App: React.FC = () => {
     if (!user) return;
     setIsUpdating(true);
     try {
+      // Fix property names in handleUpdateProfile to match the User interface (camelCase vs snake_case).
       const { error } = await supabase.from('profiles').upsert({
         id: user.id,
         name: editForm.name,
@@ -410,7 +412,7 @@ const App: React.FC = () => {
           <div className="flex-1 flex flex-col items-center justify-center p-4">
             <div className="w-full max-w-md bg-zinc-900 border border-zinc-800 p-8 rounded-[2.5rem] shadow-2xl">
               <div className="text-center mb-10">
-                <img src={LAMA_LOGO_URL} alt="Logo" className="w-20 h-20 mx-auto mb-6 object-contain" />
+                <img src={LAMA_LOGO_URL} alt="Logo" className="w-20 h-20 mx-auto mb-6 object-cover rounded-xl" />
                 <h2 className="text-3xl font-oswald text-white font-black uppercase italic tracking-tighter">Sede Virtual</h2>
               </div>
               <form onSubmit={handleLogin} className="space-y-4">
@@ -429,7 +431,7 @@ const App: React.FC = () => {
                     <div className="flex items-center gap-10">
                       <div className="relative group shrink-0">
                         <div className="absolute inset-0 bg-yellow-500/20 blur-3xl rounded-full scale-150 opacity-0 group-hover:opacity-100 transition-all duration-700"></div>
-                        <img src={LAMA_LOGO_URL} alt="Logo" className="relative w-28 h-28 object-contain filter drop-shadow-[0_0_15px_rgba(234,179,8,0.3)] transform group-hover:scale-110 transition-transform duration-500" />
+                        <img src={LAMA_LOGO_URL} alt="Logo" className="relative w-28 h-28 object-cover rounded-2xl filter drop-shadow-[0_0_15px_rgba(234,179,8,0.3)] transform group-hover:scale-110 transition-transform duration-500" />
                       </div>
                       <div>
                         <span className="text-yellow-500 font-black uppercase tracking-widest text-xs md:text-lg">LATIN AMERICAN MOTORCYCLE ASSOCIATION</span>
@@ -546,46 +548,53 @@ const App: React.FC = () => {
                     <div className="w-2 h-10 bg-red-600 rounded-full"></div>
                     <h2 className="text-4xl font-oswald font-black text-white italic uppercase tracking-tighter">Mural de <span className="text-yellow-500">Missões</span></h2>
                   </header>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-0">
-                    <div className="bg-zinc-950 p-6 rounded-[2rem] border border-zinc-900 shadow-xl relative overflow-hidden group">
-                      <div className="absolute top-0 right-0 p-4 text-yellow-500/10 group-hover:text-yellow-500/20 transition-colors"><Cake size={60} /></div>
-                      <h3 className="text-lg font-oswald font-black text-white uppercase italic mb-4 flex items-center gap-2">
-                        <span className="w-1.5 h-5 bg-yellow-500 rounded-full"></span> Mês Atual
-                      </h3>
-                      <div className="space-y-3">
-                        {getBirthdaysByMonth(new Date().getUTCMonth()).length > 0 ? (
-                          getBirthdaysByMonth(new Date().getUTCMonth()).map(member => (
-                            <div key={member.id} className="flex items-center justify-between border-b border-zinc-900 pb-2">
-                              <div className="flex items-center gap-2">
-                                <img src={member.avatar} className="w-6 h-6 rounded-lg object-cover" alt="" />
-                                <span className="text-xs font-bold text-zinc-300">{member.name}</span>
+
+                  <div className="space-y-8">
+                    <h3 className="text-2xl font-oswald font-black text-white uppercase italic tracking-widest flex items-center gap-3">
+                      <Cake size={24} className="text-pink-500" /> Aniversários
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-0">
+                      <div className="bg-zinc-950 p-6 rounded-[2rem] border border-zinc-900 shadow-xl relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-4 text-yellow-500/10 group-hover:text-yellow-500/20 transition-colors"><Cake size={60} /></div>
+                        <h3 className="text-lg font-oswald font-black text-white uppercase italic mb-4 flex items-center gap-2">
+                          <span className="w-1.5 h-5 bg-yellow-500 rounded-full"></span> Mês Atual
+                        </h3>
+                        <div className="space-y-3">
+                          {getBirthdaysByMonth(new Date().getUTCMonth()).length > 0 ? (
+                            getBirthdaysByMonth(new Date().getUTCMonth()).map(member => (
+                              <div key={member.id} className="flex items-center justify-between border-b border-zinc-900 pb-2">
+                                <div className="flex items-center gap-2">
+                                  <img src={member.avatar} className="w-6 h-6 rounded-lg object-cover" alt="" />
+                                  <span className="text-xs font-bold text-zinc-300">{member.name}</span>
+                                </div>
+                                <span className="text-[10px] font-black text-yellow-500 font-mono italic">{new Date(member.birthDate!).getUTCDate().toString().padStart(2, '0')}</span>
                               </div>
-                              <span className="text-[10px] font-black text-yellow-500 font-mono italic">{new Date(member.birthDate!).getUTCDate().toString().padStart(2, '0')}</span>
-                            </div>
-                          ))
-                        ) : ( <p className="text-[10px] text-zinc-600 italic uppercase">Sem aniversários este mês</p> )}
+                            ))
+                          ) : ( <p className="text-[10px] text-zinc-600 italic uppercase">Sem aniversários este mês</p> )}
+                        </div>
                       </div>
-                    </div>
-                    <div className="bg-zinc-950 p-6 rounded-[2rem] border border-zinc-900 shadow-xl relative overflow-hidden group">
-                      <div className="absolute top-0 right-0 p-4 text-zinc-500/10 group-hover:text-zinc-500/20 transition-colors"><Star size={60} /></div>
-                      <h3 className="text-lg font-oswald font-black text-white uppercase italic mb-4 flex items-center gap-2">
-                        <span className="w-1.5 h-5 bg-zinc-700 rounded-full"></span> Próximo Mês
-                      </h3>
-                      <div className="space-y-3">
-                        {getBirthdaysByMonth((new Date().getUTCMonth() + 1) % 12).length > 0 ? (
-                          getBirthdaysByMonth((new Date().getUTCMonth() + 1) % 12).map(member => (
-                            <div key={member.id} className="flex items-center justify-between border-b border-zinc-900 pb-2">
-                              <div className="flex items-center gap-2">
-                                <img src={member.avatar} className="w-6 h-6 rounded-lg object-cover" alt="" />
-                                <span className="text-xs font-bold text-zinc-400">{member.name}</span>
+                      <div className="bg-zinc-950 p-6 rounded-[2rem] border border-zinc-900 shadow-xl relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-4 text-zinc-500/10 group-hover:text-zinc-500/20 transition-colors"><Star size={60} /></div>
+                        <h3 className="text-lg font-oswald font-black text-white uppercase italic mb-4 flex items-center gap-2">
+                          <span className="w-1.5 h-5 bg-zinc-700 rounded-full"></span> Próximo Mês
+                        </h3>
+                        <div className="space-y-3">
+                          {getBirthdaysByMonth((new Date().getUTCMonth() + 1) % 12).length > 0 ? (
+                            getBirthdaysByMonth((new Date().getUTCMonth() + 1) % 12).map(member => (
+                              <div key={member.id} className="flex items-center justify-between border-b border-zinc-900 pb-2">
+                                <div className="flex items-center gap-2">
+                                  <img src={member.avatar} className="w-6 h-6 rounded-lg object-cover" alt="" />
+                                  <span className="text-xs font-bold text-zinc-400">{member.name}</span>
+                                </div>
+                                <span className="text-[10px] font-black text-zinc-500 font-mono italic">{new Date(member.birthDate!).getUTCDate().toString().padStart(2, '0')}</span>
                               </div>
-                              <span className="text-[10px] font-black text-zinc-500 font-mono italic">{new Date(member.birthDate!).getUTCDate().toString().padStart(2, '0')}</span>
-                            </div>
-                          ))
-                        ) : ( <p className="text-[10px] text-zinc-600 italic uppercase">Sem aniversários no próximo mês</p> )}
+                            ))
+                          ) : ( <p className="text-[10px] text-zinc-600 italic uppercase">Sem aniversários no próximo mês</p> )}
+                        </div>
                       </div>
                     </div>
                   </div>
+
                   <div className="space-y-8">
                     <h3 className="text-2xl font-oswald font-black text-white uppercase italic tracking-widest flex items-center gap-3">
                       <Map size={24} className="text-red-600" /> Minhas Missões
@@ -690,7 +699,6 @@ const App: React.FC = () => {
                         </tbody>
                       </table>
                     </div>
-                    {/* Botão de acesso exclusivo para as rotas dos membros */}
                     <div className="mt-12 flex justify-center border-t border-zinc-900 pt-12">
                       <button onClick={() => setView('member-routes')} className="bg-yellow-500 hover:bg-yellow-600 text-black px-12 py-5 rounded-2xl font-black uppercase flex items-center gap-4 transition-all shadow-xl shadow-yellow-500/10 active:scale-95">
                         <Map size={20} /> Ver Rotas de Todos os Membros

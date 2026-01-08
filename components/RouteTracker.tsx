@@ -52,10 +52,24 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
     setTotalDistance(0);
     distanceRef.current = 0;
 
-    // Iniciar watchPosition com configurações de alta precisão
+    // Captura inicial imediata para garantir que o mapa mostre onde começou
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const firstPoint: RoutePoint = { 
+          lat: pos.coords.latitude, 
+          lng: pos.coords.longitude, 
+          timestamp: pos.timestamp 
+        };
+        pointsRef.current = [firstPoint];
+        setPoints([firstPoint]);
+      },
+      (err) => console.debug("Aguardando sinal GPS...", err),
+      { enableHighAccuracy: true }
+    );
+
+    // Monitoramento contínuo
     watchId.current = navigator.geolocation.watchPosition(
       (pos) => {
-        // Ignorar pontos com precisão muito baixa (> 100 metros) para evitar jitter
         if (pos.coords.accuracy > 100) return;
 
         const newPoint: RoutePoint = { 
@@ -68,22 +82,20 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
           const last = pointsRef.current[pointsRef.current.length - 1];
           const dist = calculateDistance(last, newPoint);
           
-          // Registra apenas se houver movimento real (> 10 metros) para economizar dados e bateria
-          if (dist > 0.01) {
+          // Sensibilidade ajustada para 5 metros (0.005 km)
+          if (dist > 0.005) {
             distanceRef.current += dist;
             setTotalDistance(distanceRef.current);
             pointsRef.current = [...pointsRef.current, newPoint];
             setPoints([...pointsRef.current]);
           }
         } else {
-          // Primeiro ponto capturado
           pointsRef.current = [newPoint];
           setPoints([newPoint]);
         }
       },
       (error) => {
-        console.error("Erro no rastreamento GPS:", error);
-        // Não interrompemos a gravação, apenas logamos, pois o sinal pode voltar
+        console.error("Erro no GPS:", error);
       },
       { 
         enableHighAccuracy: true, 
@@ -103,7 +115,7 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
     const finalDistance = distanceRef.current;
 
     if (finalPoints.length < 2) {
-      alert("Sinal de GPS insuficiente. Trajeto muito curto para ser gravado.");
+      alert("Trajeto insuficiente para gravação. Movimente-se mais um pouco.");
       setIsRecording(false);
       setStartTime(null);
       setPoints([]);
@@ -113,7 +125,7 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
 
     if (onSave) {
       onSave({
-        id: '', // O ID real será gerado pela função handleSaveRoute no App.tsx
+        id: '', // Gerado automaticamente no App.tsx
         title: `Missão em ${new Date().toLocaleDateString('pt-BR')}`,
         description: `Percurso gravado via L.A.M.A. Sede Virtual. Duração: ${formatTime(elapsed)}.`,
         distance: `${finalDistance.toFixed(2)} km`,

@@ -2,8 +2,8 @@ import React from 'react';
 import { Home, Compass, Map, User, LogOut, Radio, Image as ImageIcon, MapPin, Settings } from 'lucide-react';
 import { View, User as UserType } from '../types';
 
-// URL direta do raw content do GitHub para maior compatibilidade
-const LAMA_LOGO_URL = 'https://raw.githubusercontent.com/lamaaparecidabr-lab/LAMA-APARECIDA/main/components/logo.jpg';
+// URL sincronizada com o repositório LAMA-APARECIDA-2
+const LAMA_LOGO_URL = 'https://raw.githubusercontent.com/lamaaparecidabr-lab/LAMA-APARECIDA-2/main/components/logo.jpg';
 
 export const Sidebar: React.FC<SidebarProps> = ({ user, currentView, setView, onLogout }) => {
   const isAdmin = user?.role === 'admin' || user?.email === 'lama.aparecidabr@gmail.com';
@@ -32,10 +32,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ user, currentView, setView, on
             <img 
               src={LAMA_LOGO_URL} 
               alt="LAMA" 
-              className="relative w-16 h-16 object-contain filter drop-shadow-[0_0_10px_rgba(234,179,8,0.3)] transform group-hover:scale-110 transition-transform duration-500" 
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = 'https://raw.githubusercontent.com/lamaaparecidabr-lab/LAMA-APARECIDA/main/components/logo.jpg';
-              }}
+              className="relative w-16 h-16 rounded-xl object-cover filter drop-shadow-[0_0_10px_rgba(234,179,8,0.3)] transform group-hover:scale-110 transition-transform duration-500" 
             />
           </div>
           <div className="relative">
