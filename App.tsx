@@ -275,44 +275,55 @@ const App: React.FC = () => {
   };
 
   const handleSaveRoute = async (newRoute: Route) => {
-    if (!user) return;
+    // Verificação de segurança da sessão
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session || !user) {
+      alert("Sua sessão expirou durante a viagem. Faça login novamente para salvar futuras missões.");
+      throw new Error("Unauthorized");
+    }
+
     setIsUpdating(true);
     try {
-      // Limpeza profunda e otimização do trajeto antes de salvar
+      // Filtrar pontos inválidos ou duplicados
       let validPoints = newRoute.points.filter(p => 
         p && typeof p.lat === 'number' && !isNaN(p.lat) && 
         typeof p.lng === 'number' && !isNaN(p.lng)
       );
 
-      // Sampling equilibrado para evitar erros de carga
+      // Otimização agressiva: Limitar a 400 pontos para garantir que o banco processe rápido
+      // Isso mantém o formato do trajeto mas reduz o peso do JSON drasticamente
       let optimizedPoints = validPoints;
-      if (optimizedPoints.length > 600) {
-        const factor = Math.ceil(optimizedPoints.length / 600);
+      if (optimizedPoints.length > 400) {
+        const factor = Math.ceil(optimizedPoints.length / 400);
         optimizedPoints = optimizedPoints.filter((_, i) => i % factor === 0 || i === optimizedPoints.length - 1);
       }
 
-      const { error } = await supabase.from('routes').insert([{
+      const routePayload = {
         id: generateUUID(),
         user_id: user.id,
-        title: newRoute.title.trim() || `Missão ${new Date().toLocaleDateString()}`,
+        title: newRoute.title.trim() || `Missão em ${new Date().toLocaleDateString()}`,
         description: newRoute.description.trim(),
         distance: newRoute.distance,
         difficulty: newRoute.difficulty,
         points: optimizedPoints,
         status: newRoute.status,
-        thumbnail: newRoute.thumbnail || 'https://images.unsplash.com/photo-1558981403-c5f91cbba527?q=80&w=800&auto=format&fit=crop',
+        thumbnail: 'https://images.unsplash.com/photo-1558981403-c5f91cbba527?q=80&w=800&auto=format&fit=crop',
         is_official: user.role === 'admin'
-      }]);
+      };
+
+      const { error } = await supabase.from('routes').insert([routePayload]);
 
       if (error) throw error;
       
-      // Atualização imediata e navegação síncrona para o mural
-      await fetchRoutes();
+      // Transição imediata de view para liberar o usuário
       setView('my-routes');
+      // Atualizar a lista de rotas em segundo plano
+      fetchRoutes();
+      
     } catch (err: any) {
-      console.error("Erro crítico ao salvar missão no Radar:", err);
-      alert("Não foi possível sincronizar com o Mural agora. Verifique sua conexão.");
-      throw err;
+      console.error("Erro crítico no salvamento do Mural:", err);
+      alert("Falha técnica ao sincronizar com o Mural. Verifique seu sinal de internet.");
+      throw err; // Repassa para o RouteTracker parar o Loader
     } finally {
       setIsUpdating(false);
     }

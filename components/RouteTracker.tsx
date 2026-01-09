@@ -59,17 +59,15 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
     setIsRecording(true);
     setStartTime(Date.now());
 
-    // Tentar manter a tela ligada durante a missão
     if ('wakeLock' in navigator) {
       try {
         wakeLock.current = await (navigator as any).wakeLock.request('screen');
       } catch (err) {
-        console.warn("Wake Lock indisponível neste navegador.");
+        console.warn("Wake Lock indisponível.");
       }
     }
 
     const processNewPosition = (pos: GeolocationPosition) => {
-      // Tolerância de precisão ajustada para 200m para evitar descartar pontos em cidades
       if (pos.coords.accuracy > 200) return;
 
       const newPoint: RoutePoint = { 
@@ -85,28 +83,23 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
         setPoints([newPoint]);
       } else {
         const d = calculateDistance(lastPoint, newPoint);
-        // Sensibilidade de 2 metros para registrar movimento real
         if (d > 0.002) {
           distanceRef.current += d;
           pointsRef.current.push(newPoint);
-          
-          // Atualização de estado síncrona para garantir renderização no mapa
           setTotalDistance(distanceRef.current);
           setPoints([...pointsRef.current]);
         }
       }
     };
 
-    // 1. Captura imediata "quente"
     navigator.geolocation.getCurrentPosition(processNewPosition, 
-      (err) => console.warn("Aguardando estabilização do sinal satelital...", err),
+      (err) => console.warn("Aguardando satélite...", err),
       { enableHighAccuracy: true, timeout: 5000 }
     );
 
-    // 2. Fluxo contínuo de alta fidelidade
     watchId.current = navigator.geolocation.watchPosition(
       processNewPosition,
-      (error) => console.error("Falha no link de satélite:", error),
+      (error) => console.error("Falha no GPS:", error),
       { 
         enableHighAccuracy: true, 
         timeout: 10000, 
@@ -131,14 +124,18 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
     const finalElapsed = elapsed;
 
     if (finalPoints.length < 2 || finalDistance < 0.01) {
-      alert("Trajeto insuficiente detectado no Radar. Movimente-se mais um pouco.");
+      alert("Trajeto insuficiente no Radar. Movimente-se mais.");
       resetState();
       return;
     }
 
     setIsSaving(true);
-    if (onSave) {
-      try {
+    
+    // Pequeno delay para garantir que o UI renderize o estado 'Sincronizando'
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    try {
+      if (onSave) {
         await onSave({
           id: '', 
           title: `Missão em ${new Date().toLocaleDateString('pt-BR')}`,
@@ -148,13 +145,14 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
           points: finalPoints,
           status: 'concluída'
         });
-      } catch (err) {
-        console.error("Erro ao salvar no banco:", err);
       }
+      resetState();
+    } catch (err) {
+      console.error("Erro ao sincronizar missão:", err);
+      // O resetState não é chamado aqui para permitir que o usuário tente novamente se falhar
+    } finally {
+      setIsSaving(false);
     }
-
-    setIsSaving(false);
-    resetState();
   };
 
   const resetState = () => {
@@ -220,7 +218,7 @@ export const RouteTracker: React.FC<RouteTrackerProps> = ({ onSave }) => {
           <div className="flex items-center gap-4 bg-zinc-900/40 p-5 rounded-2xl border border-zinc-800">
             <Shield className="text-red-600 shrink-0" size={18} />
             <p className="text-[9px] text-zinc-500 font-bold uppercase italic leading-relaxed">
-              Importante: Mantenha a tela ligada e evite fechar o app para não interromper o Radar.
+              Dica: Missões longas podem demorar alguns segundos a mais para sincronizar com o Mural.
             </p>
           </div>
         </div>
