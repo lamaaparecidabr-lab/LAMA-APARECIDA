@@ -3,5 +3,6 @@
   "description": "Sede Virtual L.A.M.A. Aparecida de Goiânia",
   "requestFramePermissions": [
     "geolocation"
-  ]
+  ],
+  "majorCapabilities": []
 }

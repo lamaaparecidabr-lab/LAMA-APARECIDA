@@ -4,7 +4,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 export const getRouteInsights = async (routeName: string, location: string) => {
   try {
     // Inicializa dentro da função para garantir que process.env.API_KEY esteja disponível
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey: (process.env.GEMINI_API_KEY || process.env.API_KEY || '') as string });
     
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',

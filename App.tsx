@@ -83,6 +83,7 @@ const App: React.FC = () => {
   const [routes, setRoutes] = useState<Route[]>([]);
   const [allMembers, setAllMembers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
@@ -126,6 +127,7 @@ const App: React.FC = () => {
   const syncUserData = async (authUser: any) => {
     if (syncInProgress.current) return;
     syncInProgress.current = true;
+    setErrorMsg(null);
     try {
       const basicUserData: User = {
         id: authUser.id,
@@ -137,7 +139,13 @@ const App: React.FC = () => {
       setUser(basicUserData);
       setIsAuthenticated(true);
       const { data: profileData, error } = await supabase.from('profiles').select('*').eq('id', authUser.id).maybeSingle();
-      if (profileData && !error) {
+      if (error) {
+        console.error("Erro ao buscar perfil:", error);
+        if (error.message.includes('fetch')) {
+          setErrorMsg("Falha ao conectar com o Supabase. Verifique a configuração.");
+        }
+      }
+      if (profileData) {
         const fullUserData: User = {
           ...basicUserData,
           name: profileData.name || basicUserData.name,
@@ -179,8 +187,11 @@ const App: React.FC = () => {
           email: ''
         })));
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Erro ao buscar membros:", err);
+      if (err.message?.includes('fetch')) {
+        setErrorMsg("Erro de conexão (Fetch) detectado.");
+      }
     }
   };
 
@@ -202,8 +213,11 @@ const App: React.FC = () => {
           isOfficial: r.is_official
         })));
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Erro ao buscar rotas:", err);
+      if (err.message?.includes('fetch')) {
+        setErrorMsg("Erro de conexão (Fetch) detectado ao buscar rotas.");
+      }
     }
   };
 
@@ -435,6 +449,13 @@ const App: React.FC = () => {
       <Sidebar user={user} currentView={currentView} setView={setView} onLogout={handleLogout} />
       
       <main className="flex-1 p-5 md:p-12 pb-32 md:pb-12 max-w-[1400px] mx-auto w-full overflow-y-auto custom-scrollbar flex flex-col">
+        {errorMsg && (
+          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-4 text-red-500 animate-in fade-in slide-in-from-top-4 duration-500">
+            <Shield size={24} className="shrink-0" />
+            <p className="font-bold text-sm uppercase">{errorMsg}</p>
+            <button onClick={() => window.location.reload()} className="ml-auto bg-red-500 text-black px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-red-400 transition-colors">Tentar Novamente</button>
+          </div>
+        )}
         {!isAuthenticated && !['home', 'clubhouse', 'gallery'].includes(currentView) ? (
           <div className="flex-1 flex flex-col items-center justify-center p-4">
             <div className="w-full max-w-md bg-zinc-900 border border-zinc-800 p-8 rounded-[2.5rem] shadow-2xl">
