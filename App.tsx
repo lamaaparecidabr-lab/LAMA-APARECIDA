@@ -224,14 +224,20 @@ const App: React.FC = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setErrorMsg(null);
     try {
       const { error } = await supabase.auth.signInWithPassword(loginForm);
       if (error) {
-        alert("Acesso negado: " + error.message);
+        if (error.message.includes('fetch')) {
+          setErrorMsg("Falha de conexão: Verifique se o domínio está autorizado no Supabase (CORS) e se as chaves API estão corretas.");
+        } else {
+          setErrorMsg("Acesso negado: " + (error.message === 'Invalid login credentials' ? 'Email ou senha incorretos' : error.message));
+        }
         setIsLoading(false);
       }
     } catch (err: any) {
-      alert("Erro inesperado no login.");
+      console.error("Erro no login:", err);
+      setErrorMsg("Erro inesperado no sistema. Tente novamente mais tarde.");
       setIsLoading(false);
     }
   };
