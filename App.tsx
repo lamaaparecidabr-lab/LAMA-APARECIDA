@@ -141,6 +141,7 @@ const App: React.FC = () => {
     syncInProgress.current = true;
     setErrorMsg(null);
     try {
+      // Dados básicos iniciais (fallback)
       const basicUserData: User = {
         id: authUser.id,
         name: authUser.user_metadata?.name || 'Membro L.A.M.A.',
@@ -148,15 +149,21 @@ const App: React.FC = () => {
         avatar: authUser.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${authUser.id}`,
         role: authUser.email === ADMIN_EMAIL ? 'admin' : 'member'
       };
-      setUser(basicUserData);
-      setIsAuthenticated(true);
-      const { data: profileData, error } = await supabase.from('profiles').select('*').eq('id', authUser.id).maybeSingle();
+
+      // Tenta buscar o perfil completo no Supabase
+      const { data: profileData, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authUser.id)
+        .maybeSingle();
+
       if (error) {
         console.error("Erro ao buscar perfil:", error);
         if (error.message.includes('fetch')) {
-          setErrorMsg("Falha ao conectar com o Supabase. Verifique a configuração.");
+          setErrorMsg("Falha de conexão com o banco de dados. Tentando usar dados locais...");
         }
       }
+
       if (profileData) {
         const fullUserData: User = {
           ...basicUserData,
@@ -175,9 +182,14 @@ const App: React.FC = () => {
           birthDate: fullUserData.birthDate || '',
           associationType: fullUserData.associationType
         });
+      } else {
+        // Se não houver perfil no DB, usa os básicos (vindo do Auth)
+        setUser(basicUserData);
       }
+
+      setIsAuthenticated(true);
     } catch (err) {
-      console.error("Erro na sincronização:", err);
+      console.error("Erro crítico na sincronização:", err);
     } finally {
       setIsLoading(false);
       syncInProgress.current = false;
