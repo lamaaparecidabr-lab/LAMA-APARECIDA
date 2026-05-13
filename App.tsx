@@ -98,14 +98,6 @@ const App: React.FC = () => {
 
   useEffect(() => {
     let mounted = true;
-    
-    // Timer de segurança para evitar tela de loading infinita (reduzido para 6s)
-    const safetyTimer = setTimeout(() => {
-      if (mounted && isLoading) {
-        console.warn("Safety timer triggered: Forçando saída do loading");
-        setIsLoading(false);
-      }
-    }, 6000);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
@@ -122,10 +114,20 @@ const App: React.FC = () => {
 
     return () => {
       mounted = false;
-      clearTimeout(safetyTimer);
       subscription.unsubscribe();
     };
   }, []);
+
+  // Timer de segurança reativo: se o loading demorar mais de 8s, força o encerramento
+  useEffect(() => {
+    if (isLoading) {
+      const timer = setTimeout(() => {
+        console.warn("Safety timer triggered (8s): Forçando saída do loading");
+        setIsLoading(false);
+      }, 8000);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -236,15 +238,19 @@ const App: React.FC = () => {
     setIsLoading(true);
     setErrorMsg(null);
     try {
-      const { error } = await supabase.auth.signInWithPassword(loginForm);
+      const { data, error } = await supabase.auth.signInWithPassword(loginForm);
       if (error) {
         if (error.message.includes('fetch')) {
-          setErrorMsg("Falha de conexão: Verifique se o domínio está autorizado no Supabase (CORS) e se as chaves API estão corretas.");
+          setErrorMsg("Falha de conexão: Verifique seu sinal de internet e se o projeto Supabase está ativo.");
         } else {
           setErrorMsg("Acesso negado: " + (error.message === 'Invalid login credentials' ? 'Email ou senha incorretos' : error.message));
         }
         setIsLoading(false);
+      } else if (!data.session) {
+        // Caso raro onde não há erro mas não logou
+        setIsLoading(false);
       }
+      // Se sucesso (data.session), o onAuthStateChange cuidará do syncUserData
     } catch (err: any) {
       console.error("Erro no login:", err);
       setErrorMsg("Erro inesperado no sistema. Tente novamente mais tarde.");
@@ -387,21 +393,12 @@ const App: React.FC = () => {
     setIsLoading(true);
     setErrorMsg(null);
     
-    // Timer de segurança para o logout não travar a UI
+    // Timer de segurança para o logout
     const logoutTimeout = setTimeout(() => {
-      setIsAuthenticated(false);
-      setUser(null);
-      setRoutes([]);
-      setAllMembers([]);
-      setView('home');
-      setIsLoading(false);
-    }, 3000);
+      completeLogout();
+    }, 2500);
 
-    try { 
-      await supabase.auth.signOut(); 
-    } catch (err) { 
-      console.error("Erro ao encerrar sessão:", err); 
-    } finally {
+    const completeLogout = () => {
       clearTimeout(logoutTimeout);
       setIsAuthenticated(false);
       setUser(null);
@@ -410,9 +407,21 @@ const App: React.FC = () => {
       setView('home');
       setIsLoading(false);
       
-      // No GitHub Pages, window.location.origin pode levar para a raiz do domínio 
-      // em vez da raiz do repositório. Usamos reload simplificado.
+      // Limpeza manual para garantir que o navegador esqueça tudo
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+      } catch (e) {}
+
       window.location.reload();
+    };
+
+    try { 
+      await supabase.auth.signOut(); 
+    } catch (err) { 
+      console.error("Erro ao encerrar sessão:", err); 
+    } finally {
+      completeLogout();
     }
   };
 
