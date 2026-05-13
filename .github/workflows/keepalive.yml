@@ -1,12 +1,20 @@
-code
-Yaml
+# INTRUÇÕES PARA MANTER O SUPABASE ATIVO (KEEP ALIVE)
+# 
+# O erro "Insufficient permissions to push workflow files" ocorre porque o AI Studio não tem 
+# permissão direta para criar arquivos na pasta .github/workflows no seu repositório.
+#
+# COMO RESOLVER:
+# 1. Acesse seu repositório no GitHub.
+# 2. Vá em "Actions" -> "New workflow" -> "set up a workflow yourself".
+# 3. Nomeie o arquivo como `keepalive.yml`.
+# 4. Cole o código abaixo exatamente como está (respeitando os espaços):
+
 name: Supabase Keep Alive
 
-on:
+"on":
   schedule:
-    # Roda todos os dias à meia-noite (UTC)
-    - cron: '0 0 * * *'
-  workflow_dispatch: # Permite rodar manualmente para testar
+    - cron: "0 0 * * *"
+  workflow_dispatch: {}
 
 jobs:
   ping:
@@ -14,6 +22,11 @@ jobs:
     steps:
       - name: Ping Supabase API
         run: |
-          curl -X GET "${{ secrets.SUPABASE_URL }}/rest/v1/" \
-          -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
-          -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}"
+          curl -i -X GET "${{ secrets.VITE_SUPABASE_URL }}/rest/v1/" \
+          -H "apikey: ${{ secrets.VITE_SUPABASE_ANON_KEY }}" \
+          -H "Authorization: Bearer ${{ secrets.VITE_SUPABASE_ANON_KEY }}"
+
+# 5. Clique em "Commit changes".
+# 6. IMPORTANTE: Vá em "Settings" -> "Secrets and variables" -> "Actions" e adicione:
+#    - VITE_SUPABASE_URL: (sua URL do Supabase)
+#    - VITE_SUPABASE_ANON_KEY: (sua Anon Key do Supabase)
