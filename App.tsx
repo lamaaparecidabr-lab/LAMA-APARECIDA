@@ -374,12 +374,24 @@ const App: React.FC = () => {
   };
 
   const handleLogout = async () => {
-    try { await supabase.auth.signOut(); } catch (err) { console.error("Erro ao encerrar sessão:", err); }
-    finally {
+    setIsLoading(true);
+    try { 
+      // Tenta deslogar do Supabase (limpa servidor e cookies)
+      await supabase.auth.signOut(); 
+    } catch (err) { 
+      console.error("Erro ao encerrar sessão:", err); 
+    } finally {
+      // Limpeza manual do estado garantida
       setIsAuthenticated(false);
       setUser(null);
-      setIsLoading(false);
+      setRoutes([]);
+      setAllMembers([]);
       setView('home');
+      setIsLoading(false);
+      
+      // Forçar recarregamento para limpar totalmente o localStorage e cache da sessão
+      // no domínio onde o app está rodando.
+      window.location.replace(window.location.origin);
     }
   };
 
