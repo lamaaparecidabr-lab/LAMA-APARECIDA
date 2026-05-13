@@ -1,8 +1,8 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || 'https://unrlbtgidichndjzevtv.supabase.co').trim();
-const supabaseAnonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_83RWqDN1dWvczMxB6zFDPQ_cR7HiGwK').trim();
+const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || 'https://rvlcokbfaoksfxyevdys.supabase.co').trim();
+const supabaseAnonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ2bGNva2JmYW9rc2Z4eWV2ZHlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1ODQ5MTYsImV4cCI6MjA5NDE2MDkxNn0.B-BgX6uV6piRIuLyemNNyQHiY--rN-9ysoAwdISSldI').trim();
 
 /**
  * L.A.M.A. SUPABASE CLIENT
