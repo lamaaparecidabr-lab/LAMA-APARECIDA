@@ -150,11 +150,17 @@ const App: React.FC = () => {
         role: authUser.email === ADMIN_EMAIL ? 'admin' : 'member'
       };
 
-      // Define como autenticado IMEDIATAMENTE com dados básicos para sair do Radar rápido
-      setUser(basicUserData);
+      // Atualiza o estado apenas se for um usuário novo ou se estivermos sem dados
+      setUser(prev => {
+        if (prev && prev.id === authUser.id && prev.bikeModel && prev.bikeModel !== 'Não informado') {
+          return prev; // Mantém os dados completos que já temos
+        }
+        return basicUserData;
+      });
+      
       setIsAuthenticated(true);
 
-      // Tenta buscar o perfil completo no Supabase de forma assíncrona
+      // Tenta buscar o perfil completo no Supabase
       const { data: profileData, error } = await supabase
         .from('profiles')
         .select('*')
@@ -175,6 +181,7 @@ const App: React.FC = () => {
           associationType: profileData.association_type || undefined,
           role: profileData.role || basicUserData.role
         };
+        
         setUser(fullUserData);
         setEditForm({
           name: fullUserData.name,
