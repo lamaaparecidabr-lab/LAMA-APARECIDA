@@ -98,18 +98,28 @@ const App: React.FC = () => {
 
   useEffect(() => {
     let mounted = true;
+    
+    // Timer de segurança para evitar tela de loading infinita (reduzido para 6s)
     const safetyTimer = setTimeout(() => {
-      if (mounted && isLoading) setIsLoading(false);
-    }, 10000);
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (mounted && isLoading) {
+        console.warn("Safety timer triggered: Forçando saída do loading");
+        setIsLoading(false);
+      }
+    }, 6000);
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
-      if (session?.user) await syncUserData(session.user);
-      else {
+      console.log("Auth Event:", event);
+      
+      if (session?.user) {
+        await syncUserData(session.user);
+      } else {
         setIsAuthenticated(false);
         setUser(null);
         setIsLoading(false);
       }
     });
+
     return () => {
       mounted = false;
       clearTimeout(safetyTimer);
@@ -375,13 +385,24 @@ const App: React.FC = () => {
 
   const handleLogout = async () => {
     setIsLoading(true);
+    setErrorMsg(null);
+    
+    // Timer de segurança para o logout não travar a UI
+    const logoutTimeout = setTimeout(() => {
+      setIsAuthenticated(false);
+      setUser(null);
+      setRoutes([]);
+      setAllMembers([]);
+      setView('home');
+      setIsLoading(false);
+    }, 3000);
+
     try { 
-      // Tenta deslogar do Supabase (limpa servidor e cookies)
       await supabase.auth.signOut(); 
     } catch (err) { 
       console.error("Erro ao encerrar sessão:", err); 
     } finally {
-      // Limpeza manual do estado garantida
+      clearTimeout(logoutTimeout);
       setIsAuthenticated(false);
       setUser(null);
       setRoutes([]);
@@ -389,9 +410,9 @@ const App: React.FC = () => {
       setView('home');
       setIsLoading(false);
       
-      // Forçar recarregamento para limpar totalmente o localStorage e cache da sessão
-      // no domínio onde o app está rodando.
-      window.location.replace(window.location.origin);
+      // No GitHub Pages, window.location.origin pode levar para a raiz do domínio 
+      // em vez da raiz do repositório. Usamos reload simplificado.
+      window.location.reload();
     }
   };
 
@@ -456,9 +477,21 @@ const App: React.FC = () => {
   }, [allMembers, routes]);
 
   if (isLoading) return (
-    <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-6">
+    <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-6 p-6">
       <Loader2 className="text-yellow-500 animate-spin" size={48} />
-      <p className="text-yellow-500 font-oswald font-black uppercase tracking-widest animate-pulse italic">Sincronizando Radar...</p>
+      <div className="text-center">
+        <p className="text-yellow-500 font-oswald font-black uppercase tracking-widest animate-pulse italic">
+          Sincronizando Radar...
+        </p>
+        <p className="text-zinc-600 text-[10px] uppercase font-bold mt-2">LAMA APARECIDA MOTORCYCLE ASSOCIATION</p>
+      </div>
+      
+      <button 
+        onClick={() => setIsLoading(false)}
+        className="mt-8 text-zinc-500 hover:text-yellow-500 text-[10px] font-black uppercase tracking-tighter transition-colors border border-zinc-900 px-4 py-2 rounded-full"
+      >
+        Pular Sincronização
+      </button>
     </div>
   );
 
