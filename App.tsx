@@ -150,7 +150,11 @@ const App: React.FC = () => {
         role: authUser.email === ADMIN_EMAIL ? 'admin' : 'member'
       };
 
-      // Tenta buscar o perfil completo no Supabase
+      // Define como autenticado IMEDIATAMENTE com dados básicos para sair do Radar rápido
+      setUser(basicUserData);
+      setIsAuthenticated(true);
+
+      // Tenta buscar o perfil completo no Supabase de forma assíncrona
       const { data: profileData, error } = await supabase
         .from('profiles')
         .select('*')
@@ -159,9 +163,6 @@ const App: React.FC = () => {
 
       if (error) {
         console.error("Erro ao buscar perfil:", error);
-        if (error.message.includes('fetch')) {
-          setErrorMsg("Falha de conexão com o banco de dados. Tentando usar dados locais...");
-        }
       }
 
       if (profileData) {
@@ -182,12 +183,7 @@ const App: React.FC = () => {
           birthDate: fullUserData.birthDate || '',
           associationType: fullUserData.associationType
         });
-      } else {
-        // Se não houver perfil no DB, usa os básicos (vindo do Auth)
-        setUser(basicUserData);
       }
-
-      setIsAuthenticated(true);
     } catch (err) {
       console.error("Erro crítico na sincronização:", err);
     } finally {
