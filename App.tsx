@@ -81,6 +81,15 @@ const App: React.FC = () => {
   const [currentView, setView] = useState<View>('home');
   const [user, setUser] = useState<User | null>(null);
   const [routes, setRoutes] = useState<Route[]>([]);
+  const [officialMissions, setOfficialMissions] = useState({ 
+    monthlyMeeting: 'Não agendada', 
+    officialRide: 'Não agendado' 
+  });
+  const [isEditingMissions, setIsEditingMissions] = useState(false);
+  const [missionsForm, setMissionsForm] = useState({ 
+    monthlyMeeting: '', 
+    officialRide: '' 
+  });
   const [allMembers, setAllMembers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -99,13 +108,15 @@ const App: React.FC = () => {
   useEffect(() => {
     let mounted = true;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
       console.log("Auth Event:", event);
       
       if (session?.user) {
-        await syncUserData(session.user);
+        // Se temos usuário, sincronizamos
+        syncUserData(session.user);
       } else {
+        // Se não temos, removemos autenticação
         setIsAuthenticated(false);
         setUser(null);
         setIsLoading(false);
@@ -133,15 +144,61 @@ const App: React.FC = () => {
     if (isAuthenticated) {
       fetchRoutes();
       fetchMembers();
+      fetchOfficialMissions();
     }
   }, [isAuthenticated]);
+
+  const fetchOfficialMissions = async () => {
+    try {
+      const { data, error } = await supabase.from('official_missions').select('*').single();
+      if (error && error.code !== 'PGRST116') {
+        console.error("Erro ao carregar Missões Oficiais:", error);
+        return;
+      }
+      if (data) {
+        setOfficialMissions({
+          monthlyMeeting: data.monthly_meeting || 'Não agendada',
+          officialRide: data.official_ride || 'Não agendado'
+        });
+        setMissionsForm({
+          monthlyMeeting: data.monthly_meeting || '',
+          officialRide: data.official_ride || ''
+        });
+      }
+    } catch (err) {
+      console.error("Exceção ao buscar Missões Oficiais:", err);
+    }
+  };
+
+  const handleUpdateMissions = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsUpdating(true);
+    try {
+      const { error } = await supabase.from('official_missions').upsert({
+        id: 1,
+        monthly_meeting: missionsForm.monthlyMeeting,
+        official_ride: missionsForm.officialRide,
+        updated_at: new Date().toISOString()
+      });
+      if (error) throw error;
+      setOfficialMissions({ ...missionsForm });
+      setIsEditingMissions(false);
+      alert("Missões Oficiais atualizadas!");
+    } catch (err: any) {
+      alert("Erro ao atualizar missões: " + err.message);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   const syncUserData = async (authUser: any) => {
     if (syncInProgress.current) return;
     syncInProgress.current = true;
+    
+    // Garantimos que erroMsg seja nula ao iniciar nova sincronização
     setErrorMsg(null);
+
     try {
-      // Dados básicos iniciais (fallback)
       const basicUserData: User = {
         id: authUser.id,
         name: authUser.user_metadata?.name || 'Membro L.A.M.A.',
@@ -150,16 +207,16 @@ const App: React.FC = () => {
         role: authUser.email === ADMIN_EMAIL ? 'admin' : 'member'
       };
 
-      // Atualiza o estado apenas se for um usuário novo ou se estivermos sem dados
+      // Define como autenticado IMEDIATAMENTE com dados básicos para liberar a UI
       setUser(prev => {
+        // Se já temos dados completos, não sobrescrevemos com básicos
         if (prev && prev.id === authUser.id && prev.bikeModel && prev.bikeModel !== 'Não informado') {
-          return prev; // Mantém os dados completos que já temos
+          return prev;
         }
         return basicUserData;
       });
-      
       setIsAuthenticated(true);
-
+      
       // Tenta buscar o perfil completo no Supabase
       const { data: profileData, error } = await supabase
         .from('profiles')
@@ -194,8 +251,11 @@ const App: React.FC = () => {
     } catch (err) {
       console.error("Erro crítico na sincronização:", err);
     } finally {
-      setIsLoading(false);
-      syncInProgress.current = false;
+      // Pequeno delay para garantir que a transição do Radar seja suave
+      setTimeout(() => {
+        setIsLoading(false);
+        syncInProgress.current = false;
+      }, 500);
     }
   };
 
@@ -256,16 +316,17 @@ const App: React.FC = () => {
       const { data, error } = await supabase.auth.signInWithPassword(loginForm);
       if (error) {
         if (error.message.includes('fetch')) {
-          setErrorMsg("Falha de conexão: Verifique seu sinal de internet e se o projeto Supabase está ativo.");
+          setErrorMsg("Falha de conexão: Verifique seu sinal de internet.");
         } else {
           setErrorMsg("Acesso negado: " + (error.message === 'Invalid login credentials' ? 'Email ou senha incorretos' : error.message));
         }
         setIsLoading(false);
-      } else if (!data.session) {
-        // Caso raro onde não há erro mas não logou
+      } else if (data.user) {
+        // Sincronização direta para agilizar o login
+        await syncUserData(data.user);
+      } else {
         setIsLoading(false);
       }
-      // Se sucesso (data.session), o onAuthStateChange cuidará do syncUserData
     } catch (err: any) {
       console.error("Erro no login:", err);
       setErrorMsg("Erro inesperado no sistema. Tente novamente mais tarde.");
@@ -407,14 +468,13 @@ const App: React.FC = () => {
   const handleLogout = async () => {
     setIsLoading(true);
     setErrorMsg(null);
+    syncInProgress.current = false; // Reseta flag de sincronização
     
-    // Timer de segurança para o logout
-    const logoutTimeout = setTimeout(() => {
-      completeLogout();
-    }, 2500);
-
-    const completeLogout = () => {
-      clearTimeout(logoutTimeout);
+    try { 
+      await supabase.auth.signOut(); 
+    } catch (err) { 
+      console.error("Erro ao encerrar sessão:", err); 
+    } finally {
       setIsAuthenticated(false);
       setUser(null);
       setRoutes([]);
@@ -422,21 +482,11 @@ const App: React.FC = () => {
       setView('home');
       setIsLoading(false);
       
-      // Limpeza manual para garantir que o navegador esqueça tudo
+      // Limpeza de cache residual sem recarregar a página
       try {
-        localStorage.clear();
-        sessionStorage.clear();
+        localStorage.removeItem('sb-access-token');
+        localStorage.removeItem('sb-refresh-token');
       } catch (e) {}
-
-      window.location.reload();
-    };
-
-    try { 
-      await supabase.auth.signOut(); 
-    } catch (err) { 
-      console.error("Erro ao encerrar sessão:", err); 
-    } finally {
-      completeLogout();
     }
   };
 
@@ -671,6 +721,79 @@ const App: React.FC = () => {
                     <div className="w-2 h-10 bg-red-600 rounded-full"></div>
                     <h2 className="text-4xl font-oswald font-black text-white italic uppercase tracking-tighter">Mural de <span className="text-yellow-500">Missões</span></h2>
                   </header>
+
+                  {/* MISSÕES OFICIAIS */}
+                  <div className="space-y-8">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-2xl font-oswald font-black text-white uppercase italic tracking-widest flex items-center gap-3">
+                        <Shield size={24} className="text-yellow-500" /> Missões Oficiais
+                      </h3>
+                      {isAdmin && !isEditingMissions && (
+                        <button 
+                          onClick={() => setIsEditingMissions(true)}
+                          className="bg-zinc-900 border border-zinc-800 text-yellow-500 px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-zinc-800 transition-all"
+                        >
+                          Editar Missões
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="bg-zinc-950 p-8 md:p-10 rounded-[2.5rem] border border-zinc-900 shadow-xl relative overflow-hidden group">
+                      <div className="absolute top-0 right-0 p-8 text-yellow-500/5 group-hover:text-yellow-500/10 transition-colors pointer-events-none">
+                        <Shield size={120} />
+                      </div>
+                      
+                      {isEditingMissions ? (
+                        <form onSubmit={handleUpdateMissions} className="space-y-6 relative z-10">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                              <label className="text-[9px] font-bold uppercase tracking-widest text-zinc-600 ml-2">Reunião Mensal</label>
+                              <input 
+                                type="text" 
+                                className="w-full bg-zinc-900 border border-zinc-800 text-white px-5 py-3 rounded-xl outline-none focus:border-yellow-500/50" 
+                                value={missionsForm.monthlyMeeting} 
+                                onChange={e => setMissionsForm({...missionsForm, monthlyMeeting: e.target.value})} 
+                                placeholder="Ex: 05/06 às 20h na Sede"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-[9px] font-bold uppercase tracking-widest text-zinc-600 ml-2">Passeio Oficial</label>
+                              <input 
+                                type="text" 
+                                className="w-full bg-zinc-900 border border-zinc-800 text-white px-5 py-3 rounded-xl outline-none focus:border-yellow-500/50" 
+                                value={missionsForm.officialRide} 
+                                onChange={e => setMissionsForm({...missionsForm, officialRide: e.target.value})} 
+                                placeholder="Ex: Bate-fica Pirenópolis 12/06"
+                              />
+                            </div>
+                          </div>
+                          <div className="flex gap-3">
+                            <button type="submit" disabled={isUpdating} className="flex-1 bg-yellow-500 text-black py-3 rounded-xl font-black uppercase text-xs flex items-center justify-center gap-2">
+                              {isUpdating ? <Loader2 className="animate-spin" size={16} /> : <><Save size={16} /> Salvar</>}
+                            </button>
+                            <button type="button" onClick={() => setIsEditingMissions(false)} className="flex-1 bg-zinc-900 border border-zinc-800 text-zinc-400 py-3 rounded-xl font-black uppercase text-xs">
+                              Cancelar
+                            </button>
+                          </div>
+                        </form>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 relative z-10">
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-yellow-400 italic drop-shadow-[0_0_8px_rgba(234,179,8,0.4)]">Reunião Mensal</span>
+                            <p className="text-xl md:text-2xl font-oswald font-black text-white uppercase italic tracking-wider leading-tight">
+                              {officialMissions.monthlyMeeting}
+                            </p>
+                          </div>
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-yellow-400 italic drop-shadow-[0_0_8px_rgba(234,179,8,0.4)]">Passeio Oficial</span>
+                            <p className="text-xl md:text-2xl font-oswald font-black text-white uppercase italic tracking-wider leading-tight">
+                              {officialMissions.officialRide}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
 
                   <div className="space-y-8">
                     <h3 className="text-2xl font-oswald font-black text-white uppercase italic tracking-widest flex items-center gap-3">
