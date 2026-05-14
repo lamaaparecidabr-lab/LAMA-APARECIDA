@@ -12,4 +12,4 @@ jobs:
       - name: Ping Supabase API
         run: |
           curl -f -X GET "${{ secrets.SUPABASE_URL }}/auth/v1/health" \
-          -H "apikey: ${{ secrets.secrets.SUPABASE_ANON_KEY }}"
+          -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}"
