@@ -573,7 +573,7 @@ const App: React.FC = () => {
     <div className="flex flex-col md:flex-row min-h-screen bg-[#121212] text-zinc-300">
       <Sidebar user={user} currentView={currentView} setView={setView} onLogout={handleLogout} />
       
-      <main className="flex-1 p-5 md:p-12 pb-32 md:pb-12 max-w-[1400px] mx-auto w-full overflow-y-auto custom-scrollbar flex flex-col">
+      <main className="flex-1 p-4 sm:p-6 md:p-8 lg:p-12 pb-32 md:pb-12 max-w-[1400px] mx-auto w-full overflow-y-auto custom-scrollbar flex flex-col">
         {errorMsg && (
           <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-4 text-red-500 animate-in fade-in slide-in-from-top-4 duration-500">
             <Shield size={24} className="shrink-0" />
@@ -685,7 +685,7 @@ const App: React.FC = () => {
                               <span className="bg-yellow-500 text-black px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest">Membro Ativo</span>
                               <span className="bg-zinc-800 text-zinc-400 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-zinc-700">Capítulo Aparecida</span>
                             </div>
-                            <h2 className="text-5xl md:text-7xl lg:text-8xl font-oswald font-black text-white uppercase italic tracking-tighter leading-none mb-2 truncate">{user?.name}</h2>
+                            <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-oswald font-black text-white uppercase italic tracking-tighter leading-none mb-2 truncate">{user?.name}</h2>
                             <p className="text-zinc-500 font-black uppercase tracking-[0.4em] text-[10px] md:text-xs italic truncate">{user?.email}</p>
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
