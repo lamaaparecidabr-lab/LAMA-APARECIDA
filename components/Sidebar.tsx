@@ -26,44 +26,44 @@ export const Sidebar: React.FC<SidebarProps> = ({ user, currentView, setView, on
     <>
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex md:w-64 lg:w-72 xl:w-80 bg-[#0a0a0f] border-r border-zinc-900 flex-col h-screen sticky top-0 z-40 shadow-2xl">
-        <div className="p-10 flex flex-row items-center gap-6">
+        <div className="p-6 lg:p-10 flex flex-row items-center gap-4 lg:gap-6">
           <div className="relative group shrink-0">
             <div className="absolute inset-0 bg-yellow-500/20 blur-3xl rounded-full scale-150 opacity-0 group-hover:opacity-100 transition-all duration-700"></div>
             <img 
               src={LAMA_LOGO_URL} 
               alt="LAMA" 
-              className="relative w-16 h-16 rounded-xl object-cover filter drop-shadow-[0_0_10px_rgba(234,179,8,0.3)] transform group-hover:scale-110 transition-transform duration-500" 
+              className="relative w-12 lg:w-16 h-12 lg:h-16 rounded-xl object-cover filter drop-shadow-[0_0_10px_rgba(234,179,8,0.3)] transform group-hover:scale-110 transition-transform duration-500" 
             />
           </div>
           <div className="relative">
             <div className="flex flex-col">
-              <h1 className="font-oswald text-3xl font-black tracking-[0.10em] uppercase italic leading-[0.75] text-white">
+              <h1 className="font-oswald text-2xl lg:text-3xl font-black tracking-[0.10em] uppercase italic leading-[0.75] text-white">
                 L.A.M.A.
               </h1>
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-yellow-500 font-black uppercase tracking-[0.2em] text-[15px] font-oswald italic">Aparecida</span>
+                <span className="text-yellow-500 font-black uppercase tracking-[0.2em] text-[12px] lg:text-[15px] font-oswald italic">Aparecida</span>
               </div>
             </div>
           </div>
         </div>
 
-        <nav className="flex-1 px-6 py-8 overflow-y-auto custom-scrollbar">
-          <ul className="space-y-3">
+        <nav className="flex-1 px-4 lg:px-6 py-4 lg:py-8 overflow-y-auto custom-scrollbar">
+          <ul className="space-y-2 lg:space-y-3">
             {menuItems.map((item) => (
               <li key={item.id}>
                 <button
                   onClick={() => setView(item.id as View)}
-                  className={`w-full flex items-center gap-6 px-7 py-4 rounded-[2rem] transition-all relative group overflow-hidden ${
+                  className={`w-full flex items-center gap-4 lg:gap-6 px-5 lg:px-7 py-3 lg:py-4 rounded-[2rem] transition-all relative group overflow-hidden ${
                     currentView === item.id
                       ? 'bg-zinc-900/50 text-yellow-500 border border-yellow-500/20 shadow-[0_10px_30px_-10px_rgba(234,179,8,0.2)]'
                       : 'text-zinc-700 hover:bg-zinc-900/20 hover:text-zinc-400'
                   }`}
                 >
                   {currentView === item.id && (
-                    <div className="absolute left-0 w-2 h-8 bg-yellow-500 rounded-r-full shadow-[0_0_20px_rgba(234,179,8,0.6)]"></div>
+                    <div className="absolute left-0 w-2 h-6 lg:h-8 bg-yellow-500 rounded-r-full shadow-[0_0_20px_rgba(234,179,8,0.6)]"></div>
                   )}
-                  <item.icon size={20} className={currentView === item.id ? 'scale-110' : ''} />
-                  <span className="font-black uppercase tracking-[0.25em] text-[9px] italic leading-none">{item.label}</span>
+                  <item.icon size={18} className={currentView === item.id ? 'scale-110' : ''} />
+                  <span className="font-black uppercase tracking-[0.2em] lg:tracking-[0.25em] text-[8px] lg:text-[9px] italic leading-none">{item.label}</span>
                 </button>
               </li>
             ))}
@@ -71,13 +71,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ user, currentView, setView, on
         </nav>
 
         {user && (
-          <div className="p-8 border-t border-zinc-900/50">
+          <div className="p-6 lg:p-8 border-t border-zinc-900/50">
             <button 
               onClick={onLogout} 
-              className="w-full flex items-center gap-6 px-7 py-5 text-zinc-500 hover:text-red-600 hover:bg-red-600/5 rounded-[2rem] transition-all group"
+              className="w-full flex items-center gap-4 lg:gap-6 px-5 lg:px-7 py-4 lg:py-5 text-zinc-500 hover:text-red-600 hover:bg-red-600/5 rounded-[2rem] transition-all group"
             >
-              <LogOut size={22} className="group-hover:-translate-x-1 transition-transform" />
-              <span className="font-black uppercase tracking-[0.25em] text-[9px]">Sair do Radar</span>
+              <LogOut size={20} className="group-hover:-translate-x-1 transition-transform" />
+              <span className="font-black uppercase tracking-[0.25em] text-[8px] lg:text-[9px]">Sair do Radar</span>
             </button>
           </div>
         )}
