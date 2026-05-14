@@ -3,7 +3,7 @@ name: Supabase Keep Alive
 on:
   schedule:
     - cron: '0 0 * * 0' # Roda todo domingo à meia-noite (UTC) / 21:00 (Brasília)
-  workflow_dispatch: # Mantém o botão para rodar manualmente se quiser testar
+  workflow_dispatch: # Mantém o botão para rodar manualmente
 
 jobs:
   ping:
@@ -11,7 +11,8 @@ jobs:
     steps:
       - name: Ping Supabase API
         run: |
-          curl -X GET "${{ secrets.SUPABASE_URL }}/rest/v1/" \
+          # O parâmetro -f faz o curl falhar (retornar erro 22) se o status HTTP for 4xx ou 5xx
+          curl -f -X GET "${{ secrets.SUPABASE_URL }}/rest/v1/" \
           -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
           -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}"
           
