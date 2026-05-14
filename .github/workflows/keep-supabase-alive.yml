@@ -2,8 +2,8 @@ name: Supabase Keep Alive
 
 on:
   schedule:
-    - cron: '0 0 * * *' # Roda todos os dias à meia-noite (UTC)
-  workflow_dispatch: # Permite rodar manualmente para testar
+    - cron: '0 0 * * 0' # Roda todo domingo à meia-noite (UTC) / 21:00 (Brasília)
+  workflow_dispatch: # Mantém o botão para rodar manualmente se quiser testar
 
 jobs:
   ping:
@@ -13,4 +13,5 @@ jobs:
         run: |
           curl -X GET "${{ secrets.SUPABASE_URL }}/rest/v1/" \
           -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
-          -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" 
+          -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}"
+          
