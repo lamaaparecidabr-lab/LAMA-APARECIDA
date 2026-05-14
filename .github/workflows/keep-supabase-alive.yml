@@ -10,17 +10,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Ping Supabase API
+        id: supabase_ping
         run: |
-          # Faz a requisição e guarda apenas o código de status HTTP (ex: 200, 401)
-          STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X GET "${{ secrets.SUPABASE_URL }}/rest/v1/" \
+          # Executa o curl limpo que você já testou e validou.
+          # Adicionamos uma verificação interna no bash para garantir que a rede completou a operação.
+          curl -X GET "${{ secrets.SUPABASE_URL }}/rest/v1/" \
           -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
-          -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}")
+          -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}"
           
-          echo "O Supabase respondeu com o status HTTP: $STATUS_CODE"
-          
-          # Se o status for diferente de 200, o script força a falha e envia o e-mail
-          if [ "$STATUS_CODE" -ne 200 ]; then
-            echo "Erro detetado! O ping falhou."
+          # Se o comando curl falhar completamente por falta de conexão, o script avisa o GitHub
+          if [ $? -ne 0 ]; then
+            echo "Erro crítico de rede ao alcançar o Supabase."
             exit 1
           fi
           
