@@ -2,8 +2,8 @@ name: Supabase Keep Alive
 
 on:
   schedule:
-    - cron: '0 0 * * 0' # Roda todo domingo à meia-noite (UTC) / 21:00 (Brasília)
-  workflow_dispatch: # Mantém o botão para rodar manualmente se quiser testar
+    - cron: '0 0 * * 0' # Roda todo domingo às 21:00 (Brasília)
+  workflow_dispatch: # Mantém o botão para rodar manualmente
 
 jobs:
   ping:
@@ -11,7 +11,16 @@ jobs:
     steps:
       - name: Ping Supabase API
         run: |
-          curl -X GET "${{ secrets.SUPABASE_URL }}/rest/v1/" \
+          # Faz a requisição e guarda apenas o código de status HTTP (ex: 200, 401)
+          STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X GET "${{ secrets.SUPABASE_URL }}/rest/v1/" \
           -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
-          -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}"
+          -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}")
+          
+          echo "O Supabase respondeu com o status HTTP: $STATUS_CODE"
+          
+          # Se o status for diferente de 200, o script força a falha e envia o e-mail
+          if [ "$STATUS_CODE" -ne 200 ]; then
+            echo "Erro detetado! O ping falhou."
+            exit 1
+          fi
           
