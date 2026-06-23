@@ -15,8 +15,8 @@ import { supabase } from './services/supabaseClient';
 
 const LAMA_LOGO_URL = 'https://raw.githubusercontent.com/lamaaparecidabr-lab/LAMA-APARECIDA-2/main/components/logo.jpg';
 const YOUTUBE_ID = '-VzuMRXCizo';
-const CLUBHOUSE_COORDS = { lat: -16.7908906, lng: -49.2311547 };
-const CLUBHOUSE_ADDRESS = "R. X-011 - Sítios Santa Luzia, Aparecida de Goiânia - GO, 74922-570";
+const CLUBHOUSE_COORDS = { lat: -16.7865225, lng: -49.2312604 };
+const CLUBHOUSE_ADDRESS = "Av. W-5, Qd 73 - Lt 12 - Sitios Santa Luzia, Aparecida de Goiânia - GO, 74922-570";
 const CLUBHOUSE_MARK_NAME = "L.A.M.A. Aparecida Casa Club - Motorcycle Association";
 
 const iconicRoutes: Route[] = [
@@ -63,6 +63,18 @@ const iconicRoutes: Route[] = [
     status: 'planejada',
     thumbnail: 'https://images.unsplash.com/photo-1540541338287-41700207dee6?q=80&w=800&auto=format&fit=crop',
     isOfficial: false
+  },
+  {
+    id: 'iconic-all',
+    title: 'Todas Rotas Iconicas LAMA.',
+    description: 'Acesse o portal oficial do L.A.M.A. e confira a lista completa e atualizada de todas as Rotas Icônicas e conquistas internacionais.',
+    distance: 'Múltiplas',
+    difficulty: 'Lendária',
+    points: [],
+    status: 'planejada',
+    thumbnail: 'https://github.com/lamaaparecidabr-lab/LAMA-APARECIDA-2/blob/main/components/serra-do-rio-do-rastro.jpg?raw=true',
+    isOfficial: true,
+    externalLink: 'https://sites.google.com/lamaint.org/iconic-routes-lama-ima/inicio'
   }
 ];
 
@@ -874,7 +886,12 @@ const App: React.FC = () => {
                   </header>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     {iconicRoutes.map(route => (
-                      <div key={route.id} className="bg-zinc-900/50 rounded-[3rem] overflow-hidden border border-zinc-800 hover:border-yellow-500/30 transition-all group shadow-2xl flex flex-col relative">
+                      <div 
+                        key={route.id} 
+                        className={`bg-zinc-900/50 rounded-[3rem] overflow-hidden border border-zinc-800 hover:border-yellow-500/30 transition-all group shadow-2xl flex flex-col relative ${
+                          route.id === 'iconic-all' ? 'md:col-span-2 md:mx-auto md:max-w-xl w-full' : ''
+                        }`}
+                      >
                         {route.isOfficial && (
                           <div className="absolute top-6 right-6 z-20 transform rotate-12 drop-shadow-2xl">
                             <div className="border-[5px] border-yellow-500 text-yellow-500 px-6 py-2 rounded-2xl font-oswald font-black uppercase text-[12px] bg-black/95">OFICIAL L.A.M.A.</div>
@@ -893,7 +910,20 @@ const App: React.FC = () => {
                             <Navigation size={12} className="text-yellow-500" />
                             <span>Extensão: {route.distance}</span>
                           </div>
-                          <button onClick={() => fetchInsights(route)} className="w-full bg-zinc-800 hover:bg-yellow-500 hover:text-black text-white py-5 rounded-2xl font-black uppercase text-[10px] transition-all flex items-center justify-center gap-3"><Zap size={16} /> Briefing</button>
+                          {route.externalLink ? (
+                            <a 
+                              href={route.externalLink} 
+                              target="_blank" 
+                              rel="noopener noreferrer" 
+                              className="w-full bg-yellow-500 hover:bg-yellow-400 text-black py-5 rounded-2xl font-black uppercase text-[10px] transition-all flex items-center justify-center gap-3"
+                            >
+                              <ExternalLink size={16} /> Acessar Portal
+                            </a>
+                          ) : (
+                            <button onClick={() => fetchInsights(route)} className="w-full bg-zinc-800 hover:bg-yellow-500 hover:text-black text-white py-5 rounded-2xl font-black uppercase text-[10px] transition-all flex items-center justify-center gap-3">
+                              <Zap size={16} /> Briefing
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}

@@ -27,6 +27,7 @@ export interface Route {
   status: 'planejada' | 'concluída' | 'ativa';
   thumbnail?: string;
   isOfficial?: boolean;
+  externalLink?: string;
 }
 
 export type View = 'home' | 'explorer' | 'my-routes' | 'profile' | 'tracking' | 'gallery' | 'clubhouse' | 'admin' | 'member-routes';
